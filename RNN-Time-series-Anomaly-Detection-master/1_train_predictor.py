@@ -39,7 +39,7 @@ parser.add_argument('--batch_size', type=int, default=64, metavar='N',
                     help='batch size')
 parser.add_argument('--eval_batch_size', type=int, default=64, metavar='N',
                     help='eval_batch size')
-parser.add_argument('--bptt', type=int, default=5,
+parser.add_argument('--bptt', type=int, default=10,
                     help='sequence length')
 parser.add_argument('--teacher_forcing_ratio', type=float, default=0.7,
                     help='teacher forcing ratio (deprecated)')
