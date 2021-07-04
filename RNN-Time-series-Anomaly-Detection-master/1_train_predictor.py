@@ -27,19 +27,19 @@ parser.add_argument('--nlayers', type=int, default=2,
                     help='number of layers')
 parser.add_argument('--res_connection', action='store_true',
                     help='residual connection')
-parser.add_argument('--lr', type=float, default=0.0002,
+parser.add_argument('--lr', type=float, default=0.0002, #0.0002
                     help='initial learning rate')
 parser.add_argument('--weight_decay', type=float, default=1e-4,
                     help='weight decay')
 parser.add_argument('--clip', type=float, default=1,
                     help='gradient clipping')
-parser.add_argument('--epochs', type=int, default=3000,
+parser.add_argument('--epochs', type=int, default=20000,
                     help='upper epoch limit')
 parser.add_argument('--batch_size', type=int, default=64, metavar='N',
                     help='batch size')
 parser.add_argument('--eval_batch_size', type=int, default=64, metavar='N',
                     help='eval_batch size')
-parser.add_argument('--bptt', type=int, default=50,
+parser.add_argument('--bptt', type=int, default=5,
                     help='sequence length')
 parser.add_argument('--teacher_forcing_ratio', type=float, default=0.7,
                     help='teacher forcing ratio (deprecated)')

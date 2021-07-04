@@ -78,7 +78,7 @@ for dataname in urls:
                 elif filepath.name == 'power_data.txt':
                     tokens.append(1.0) if 8254 < i < 8998 or 11348 < i < 12143 or 33883 < i < 34601 else tokens.append(0.0)
                 elif filepath.name == 'NoiseSymbol.txt':
-                    tokens.append(1.0) if 760 < i < 800 or 950 < i < 990 else tokens.append(0.0)
+                    tokens.append(1.0) if 195 < i < 205 or 765 < i < 775 or 915 < i < 925 else tokens.append(0.0)
                 labeled_data.append(tokens)
 
 
@@ -199,7 +199,7 @@ with open(str(nyc_taxi_raw_path),'r') as f:
                             14700 < i < 14800 \
                           else tokens.append(0)
         labeled_data.append(tokens)
-nyc_taxi_train_path = nyc_taxi_raw_path.parent.parent.joinpath('labeled','train',nyc_taxi_raw_path.name).with_suffix('.pkl')
+nyc_taxi_train_path = nyc_taxi_raw_path.parent.parent.joinpath('labeled','trainex',nyc_taxi_raw_path.name).with_suffix('.pkl')
 nyc_taxi_train_path.parent.mkdir(parents=True, exist_ok=True)
 with open(str(nyc_taxi_train_path),'wb') as pkl:
     pickle.dump(labeled_data[:13104], pkl)
