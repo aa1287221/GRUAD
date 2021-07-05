@@ -6,27 +6,27 @@ def fit_norm_distribution_param(args, model, train_dataset, channel_idx=0):
     predictions = []
     organized = []
     errors = []
-    with torch.no_grad():
-        # Turn on evaluation mode which disables dropout.
-        model.eval()
-        pasthidden = model.init_hidden(1)
-        for t in range(len(train_dataset)):
-            out, hidden = model.forward(train_dataset[t].unsqueeze(0), pasthidden)
-            predictions.append([])
-            organized.append([])
-            errors.append([])
-            predictions[t].append(out.data.cpu()[0][0][channel_idx])
-            pasthidden = model.repackage_hidden(hidden)
-            for prediction_step in range(1,args.prediction_window_size):
-                out, hidden = model.forward(out, hidden)
-                predictions[t].append(out.data.cpu()[0][0][channel_idx])
-
-            if t >= args.prediction_window_size:
-                for step in range(args.prediction_window_size):
-                    organized[t].append(predictions[step+t-args.prediction_window_size][args.prediction_window_size-1-step])
-                organized[t]= torch.FloatTensor(organized[t]).to(args.device)
-                errors[t] = organized[t] - train_dataset[t][0][channel_idx]
-                errors[t] = errors[t].unsqueeze(0)
+    # with torch.no_grad():
+    #     # Turn on evaluation mode which disables dropout.
+    #     model.eval()
+    #     pasthidden = model.init_hidden(1)
+    #     for t in range(len(train_dataset)):
+    #         out, hidden = model.forward(train_dataset[t].unsqueeze(0), pasthidden)
+    #         predictions.append([])
+    #         organized.append([])
+    #         errors.append([])
+    #         predictions[t].append(out.data.cpu()[0][0][channel_idx])
+    #         pasthidden = model.repackage_hidden(hidden)
+    #         for prediction_step in range(1,args.prediction_window_size):
+    #             out, hidden = model.forward(out, hidden)
+    #             predictions[t].append(out.data.cpu()[0][0][channel_idx])
+    #
+    #         if t >= args.prediction_window_size:
+    #             for step in range(args.prediction_window_size):
+    #                 organized[t].append(predictions[step+t-args.prediction_window_size][args.prediction_window_size-1-step])
+    #             organized[t]= torch.FloatTensor(organized[t]).to(args.device)
+    #             errors[t] = organized[t] - train_dataset[t][0][channel_idx]
+    #             errors[t] = errors[t].unsqueeze(0)
 
     errors_tensor = torch.cat(errors[args.prediction_window_size:],dim=0)
     mean = errors_tensor.mean(dim=0)
