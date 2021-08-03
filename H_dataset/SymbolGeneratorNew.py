@@ -47,7 +47,7 @@ def addCP(OFDM_time):
 # construct the another version is including impulse noise(LJS)
 def channel_BG(signal, SNRdb):
     # Bernoulli-Gaussian channel          # lJS
-    prob = 0.005  # prob
+    prob = 0.001  # prob
     # convolved = np.convolve(signal, channelResponse)
     signal_power = np.mean(abs(signal**2))
     print(signal_power)
@@ -72,16 +72,16 @@ def channel_BG(signal, SNRdb):
         # power2[i] = np.sqrt(sigma2 / 2)s
         if k <= prob:
             if i <= 1000:
-                power1[i] = np.sqrt(sigma3 / 2)
-                power2[i] = np.sqrt(sigma3 / 2)
-                power1[i+1] = np.sqrt(sigma3 / 2)
-                power2[i+1] = np.sqrt(sigma3 / 2)
-                power1[i+2] = np.sqrt(sigma3 / 2)
-                power2[i+2] = np.sqrt(sigma3 / 2)
-                power1[i+3] = np.sqrt(sigma3 / 2)
-                power2[i+3] = np.sqrt(sigma3 / 2)
-                power1[i+4] = np.sqrt(sigma3 / 2)
-                power2[i+4] = np.sqrt(sigma3 / 2)
+                power1[i], power2[i] = np.sqrt(sigma3 / 2)
+                # power2[i] = np.sqrt(sigma3 / 2)
+                # power1[i+1] = np.sqrt(sigma3 / 2)
+                # power2[i+1] = np.sqrt(sigma3 / 2)
+                # power1[i+2] = np.sqrt(sigma3 / 2)
+                # power2[i+2] = np.sqrt(sigma3 / 2)
+                # power1[i+3] = np.sqrt(sigma3 / 2)
+                # power2[i+3] = np.sqrt(sigma3 / 2)
+                # power1[i+4] = np.sqrt(sigma3 / 2)
+                # power2[i+4] = np.sqrt(sigma3 / 2)
                 print('noise_position =', i + 1)
                 position = i + 1
                 noise_position.append(position)

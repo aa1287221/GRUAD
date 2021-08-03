@@ -152,15 +152,15 @@ def generate_output(args,epoch, model, gen_dataset, disp_uncertainty=True,startP
         for i in range(target.size(-1)):
             plt.plot(target[:,:,i].numpy(), label='Target'+str(i),
                      color='black', marker='.', linestyle='--', markersize=1, linewidth=0.5)
-            plt.plot(range(startPoint), outSeq[:startPoint,i].numpy(), label='1-step predictions for target'+str(i),
+            plt.plot(range(endPoint), outSeq[:, i].numpy(), label='predictions for target'+str(i),
                      color='green', marker='.', linestyle='--', markersize=1.5, linewidth=1)
             # if epoch>40:
             #     plt.plot(range(startPoint, endPoint), upperlim95[:,i].numpy(), label='upperlim'+str(i),
             #              color='skyblue', marker='.', linestyle='--', markersize=1.5, linewidth=1)
             #     plt.plot(range(startPoint, endPoint), lowerlim95[:,i].numpy(), label='lowerlim'+str(i),
             #              color='skyblue', marker='.', linestyle='--', markersize=1.5, linewidth=1)
-            plt.plot(range(startPoint, endPoint), outSeq[startPoint:,i].numpy(), label='Recursive predictions for target'+str(i),
-                     color='blue', marker='.', linestyle='--', markersize=1.5, linewidth=1)
+            # plt.plot(range(startPoint, endPoint), outSeq[startPoint:,i].numpy(), label='Recursive predictions for target'+str(i),
+            #          color='blue', marker='.', linestyle='--', markersize=1.5, linewidth=1)
 
         plt.xlim([startPoint-500, endPoint])
         plt.xlabel('Index',fontsize=15)
@@ -217,27 +217,27 @@ def train(args, model, train_dataset,epoch):
             hidden_ = model.repackage_hidden(hidden)
             optimizer.zero_grad()
 
-            '''Loss1: Free running loss'''
-            outVal = inputSeq[0].unsqueeze(0)
-            outVals=[]
-            hids1 = []
-            for i in range(inputSeq.size(0)):
-                outVal, hidden_, hid = model.forward(outVal, hidden_,return_hiddens=True)
-                outVals.append(outVal)
-                hids1.append(hid)
-            outSeq1 = torch.cat(outVals,dim=0)
-            hids1 = torch.cat(hids1,dim=0)
-            loss1 = criterion(outSeq1.contiguous().view(args.batch_size,-1), targetSeq.contiguous().view(args.batch_size,-1))
+            # '''Loss1: Free running loss'''
+            # outVal = inputSeq[0].unsqueeze(0)
+            # outVals=[]
+            # hids1 = []
+            # for i in range(inputSeq.size(0)):
+            #     outVal, hidden_, hid = model.forward(outVal, hidden_,return_hiddens=True)
+            #     outVals.append(outVal)
+            #     hids1.append(hid)
+            # outSeq1 = torch.cat(outVals,dim=0)
+            # hids1 = torch.cat(hids1,dim=0)
+            # loss1 = criterion(outSeq1.contiguous().view(args.batch_size,-1), targetSeq.contiguous().view(args.batch_size,-1))
 
-            '''Loss2: Teacher forcing loss'''
-            outSeq2, hidden, hids2 = model.forward(inputSeq, hidden, return_hiddens=True)
-            loss2 = criterion(outSeq2.contiguous().view(args.batch_size, -1), targetSeq.contiguous().view(args.batch_size, -1))
+            '''Loss: Teacher forcing loss'''
+            outSeq, hidden, hids = model.forward(inputSeq, hidden, return_hiddens=True)
+            loss = criterion(outSeq.contiguous().view(args.batch_size, -1), targetSeq.contiguous().view(args.batch_size, -1))
 
-            '''Loss3: Simplified Professor forcing loss'''
-            loss3 = criterion(hids1.contiguous().view(args.batch_size,-1), hids2.contiguous().view(args.batch_size,-1).detach())
+            # '''Loss3: Simplified Professor forcing loss'''
+            # loss3 = criterion(hids1.contiguous().view(args.batch_size,-1), hids2.contiguous().view(args.batch_size,-1).detach())
 
-            '''Total loss = Loss1+Loss2+Loss3'''
-            loss = loss1+loss2+loss3
+            # '''Total loss = Loss1+Loss2+Loss3'''
+            # loss = loss1+loss2+loss3
             loss.backward()
 
             # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
@@ -268,27 +268,27 @@ def evaluate(args, model, test_dataset):
             # inputSeq: [ seq_len * batch_size * feature_size ]
             # targetSeq: [ seq_len * batch_size * feature_size ]
             hidden_ = model.repackage_hidden(hidden)
-            '''Loss1: Free running loss'''
-            outVal = inputSeq[0].unsqueeze(0)
-            outVals=[]
-            hids1 = []
-            for i in range(inputSeq.size(0)):
-                outVal, hidden_, hid = model.forward(outVal, hidden_,return_hiddens=True)
-                outVals.append(outVal)
-                hids1.append(hid)
-            outSeq1 = torch.cat(outVals,dim=0)
-            hids1 = torch.cat(hids1,dim=0)
-            loss1 = criterion(outSeq1.contiguous().view(args.batch_size,-1), targetSeq.contiguous().view(args.batch_size,-1))
+            # '''Loss1: Free running loss'''
+            # outVal = inputSeq[0].unsqueeze(0)
+            # outVals=[]
+            # hids1 = []
+            # for i in range(inputSeq.size(0)):
+            #     outVal, hidden_, hid = model.forward(outVal, hidden_,return_hiddens=True)
+            #     outVals.append(outVal)
+            #     hids1.append(hid)
+            # outSeq1 = torch.cat(outVals,dim=0)
+            # hids1 = torch.cat(hids1,dim=0)
+            # loss1 = criterion(outSeq1.contiguous().view(args.batch_size,-1), targetSeq.contiguous().view(args.batch_size,-1))
 
             '''Loss2: Teacher forcing loss'''
-            outSeq2, hidden, hids2 = model.forward(inputSeq, hidden, return_hiddens=True)
-            loss2 = criterion(outSeq2.contiguous().view(args.batch_size, -1), targetSeq.contiguous().view(args.batch_size, -1))
+            outSeq, hidden, hids = model.forward(inputSeq, hidden, return_hiddens=True)
+            loss = criterion(outSeq.contiguous().view(args.batch_size, -1), targetSeq.contiguous().view(args.batch_size, -1))
 
-            '''Loss3: Simplified Professor forcing loss'''
-            loss3 = criterion(hids1.view(args.batch_size,-1), hids2.view(args.batch_size,-1).detach())
+            # '''Loss3: Simplified Professor forcing loss'''
+            # loss3 = criterion(hids1.view(args.batch_size,-1), hids2.view(args.batch_size,-1).detach())
 
-            '''Total loss = Loss1+Loss2+Loss3'''
-            loss = loss1+loss2+loss3
+            # '''Total loss = Loss1+Loss2+Loss3'''
+            # loss = loss1+loss2+loss3
 
             total_loss += loss.item()
 

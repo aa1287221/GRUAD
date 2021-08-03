@@ -173,7 +173,7 @@ try:
                      color='purple', marker='.', linestyle='--', markersize=1, linewidth=0.5)
             ax1.plot(oneStep_prediction, label='1-step predictions',
                      color='green', marker='.', linestyle='--', markersize=1, linewidth=0.5)
-            ax1.plot(Nstep_prediction, label=str(args.prediction_window_size) + '-step predictions',
+            ax1.plot(Nstep_prediction, label=str(args.prediction_window_size) + 'step predictions',
                      color='blue', marker='.', linestyle='--', markersize=1, linewidth=0.5)
             ax1.plot(sorted_errors_mean, label='Absolute mean prediction errors',
                      color='orange', marker='.', linestyle='--', markersize=1, linewidth=1.0)
@@ -186,11 +186,11 @@ try:
             if args.compensate:
                 ax2.plot(predicted_score, label='Predicted anomaly scores from SVR',
                          color='cyan', marker='.', linestyle='--', markersize=1, linewidth=1)
-            #ax2.plot(score.reshape(-1,1)/(predicted_score+1),label='Anomaly scores from \nmultivariate normal distribution',
-            #        color='hotpink', marker='.', linestyle='--', markersize=1, linewidth=1)
+            # ax2.plot(score.numpy().reshape(-1, 1)/(predicted_score+1), label='Anomaly scores from \nmultivariate normal distribution',
+            #          color='hotpink', marker='.', linestyle='--', markersize=1, linewidth=1)
             ax2.legend(loc='upper right')
             ax2.set_ylabel('anomaly score', fontsize=15)
-            #plt.axvspan(2830,2900 , color='yellow', alpha=0.3)
+            plt.axvspan(185, 195, color='yellow', alpha=0.3)
             plt.title('Anomaly Detection on ' + args.data +
                       ' Dataset', fontsize=18, fontweight='bold')
             plt.tight_layout()

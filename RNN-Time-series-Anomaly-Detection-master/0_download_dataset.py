@@ -78,7 +78,7 @@ for dataname in urls:
                 elif filepath.name == 'power_data.txt':
                     tokens.append(1.0) if 8254 < i < 8998 or 11348 < i < 12143 or 33883 < i < 34601 else tokens.append(0.0)
                 elif filepath.name == 'NoiseSymbol.txt':
-                    tokens.append(1.0) if 195 < i < 205 or 765 < i < 775 or 915 < i < 925 else tokens.append(0.0)
+                    tokens.append(1.0) if 180 < i < 195 or 265 < i < 280 else tokens.append(0.0)
                 labeled_data.append(tokens)
 
 
