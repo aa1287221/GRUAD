@@ -16,7 +16,7 @@ mu = 2    # one symbol combined with two bits for QAM or QPSK (LJS)
 # payloadbits per OFDM version 2 (decided by how many data carriers per OFDM , LJS)
 # payloadBits_per_OFDM = K * mu
 
-SNRdb = 25  # signal to noise-ratio in dB at the receiver
+SNRdb = 50  # signal to noise-ratio in dB at the receiver
 
 mapping_table = {
     (0, 0): -1 - 1j,
@@ -47,62 +47,59 @@ def addCP(OFDM_time):
 # construct the another version is including impulse noise(LJS)
 def channel_BG(signal, SNRdb):
     # Bernoulli-Gaussian channel          # lJS
-    prob = 0.001  # prob
+    IGR = 100  # impulse gaussian ratio
+    prob = 0.002  # prob
     # convolved = np.convolve(signal, channelResponse)
     signal_power = np.mean(abs(signal**2))
     print(signal_power)
-    # sigma2 = signal_power * 10**(-SNRdb / 10)      # (signal_power/2)  (LJS)
-    sigma3 = 32
-    # Gaussian = np.random.randn(*signal.shape) + 1j * \
-    #     np.random.randn(*signal.shape)
+    sigma2 = signal_power * 10**(-SNRdb / 10)      # (signal_power/2)  (LJS)
+    sigma3 = sigma2 * IGR
+    Gaussian = np.random.randn(*signal.shape) + 1j * \
+        np.random.randn(*signal.shape)
     power1 = np.zeros([*signal.shape])
-    # for i in range(*signal.shape):
-    #     k = np.random.rand()
-    #     # if k > prob:
-    #     #     power1[i] = np.sqrt(sigma2 / 2)
-    #     if k <= prob:
-    #         power1[i] = np.sqrt(sigma3 / 2)
-    #         print('p1=', i + 1)
     power2 = np.zeros([*signal.shape])
     noise_position = []
+    print(sigma2)
+    print(sigma3)
     for i in range(*signal.shape):
         k = np.random.rand()
-        n = np.random.binomial(n=1, p=0.5)
-        # if k > prob:
-        # power2[i] = np.sqrt(sigma2 / 2)s
+        if k > prob:
+            power1[i] = np.sqrt(sigma2 / 2)
+            power2[i] = np.sqrt(sigma2 / 2)
+    for i in range(*signal.shape):
+        k = np.random.rand()
         if k <= prob:
             if i <= 1000:
-                power1[i], power2[i] = np.sqrt(sigma3 / 2)
-                # power2[i] = np.sqrt(sigma3 / 2)
-                # power1[i+1] = np.sqrt(sigma3 / 2)
-                # power2[i+1] = np.sqrt(sigma3 / 2)
-                # power1[i+2] = np.sqrt(sigma3 / 2)
-                # power2[i+2] = np.sqrt(sigma3 / 2)
-                # power1[i+3] = np.sqrt(sigma3 / 2)
-                # power2[i+3] = np.sqrt(sigma3 / 2)
-                # power1[i+4] = np.sqrt(sigma3 / 2)
-                # power2[i+4] = np.sqrt(sigma3 / 2)
-                print('noise_position =', i + 1)
+                power1[i] = np.sqrt(sigma3 / 2)
+                power2[i] = np.sqrt(sigma3 / 2)
+                power1[i+1] = np.sqrt(sigma3 / 2)
+                power2[i+1] = np.sqrt(sigma3 / 2)
+                power1[i+2] = np.sqrt(sigma3 / 2)
+                power2[i+2] = np.sqrt(sigma3 / 2)
+                power1[i+3] = np.sqrt(sigma3 / 2)
+                power2[i+3] = np.sqrt(sigma3 / 2)
+                power1[i+4] = np.sqrt(sigma3 / 2)
+                power2[i+4] = np.sqrt(sigma3 / 2)
+                print('impulse_position =', i + 1)
                 position = i + 1
                 noise_position.append(position)
-    # noise1 = np.multiply(power1, Gaussian.real)
-    # noise2 = np.multiply(power2, Gaussian.imag)
-    noise1 = power1
-    noise2 = power2
+    noise1 = np.multiply(power1, Gaussian.real)
+    noise2 = np.multiply(power2, Gaussian.imag)
     noise_BG = np.zeros([*signal.shape]).astype(complex)
     noise_BG.real = noise1
     noise_BG.imag = noise2
-    nsymbol = noise_BG + signal     # NoiseSymbol
-    nsymbolr = nsymbol.real
-    nsymboli = nsymbol.imag
-    nsymbol = []
+    noise_symbol = noise_BG + signal     # NoiseSymbol
+    noise_symbol_real = noise_symbol.real
+    noise_symbol_image = noise_symbol.imag
+    noise_symbol = []
     for i in range(0, K+CP):
-        nsymbol.append(np.sqrt((nsymboli[i]**2)+(nsymbolr[i]**2)))
-    nsymbol = np.array(nsymbol)
+        noise_symbol.append(
+            np.sqrt((noise_symbol_image[i]**2)+(noise_symbol_real[i]**2)))
+    noise_symbol = np.array(noise_symbol)
     np.savetxt('Noise.txt', noise_BG)
     np.savetxt('NoiseReal.txt', noise_BG.real)
     np.savetxt('NoiseImag.txt', noise_BG.imag)
-    np.savetxt('NoiseSymbol.txt', nsymbol)
+    np.savetxt('NoiseSymbol.txt', noise_symbol)
     np.savetxt('NoiseSymbolReal.txt', noise_BG.real + signal.real)
     np.savetxt('NoiseSymbolImag.txt', noise_BG.imag + signal.imag)
     np.savetxt('NoisePosition.txt', noise_position)

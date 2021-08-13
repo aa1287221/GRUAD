@@ -24,7 +24,7 @@ parser.add_argument('--save_fig', '-s', action='store_true',
                     help='save results as figures')
 parser.add_argument('--compensate', action='store_true',
                     help='compensate anomaly score using anomaly score esimation')
-parser.add_argument('--beta', type=float, default=1.0,
+parser.add_argument('--beta', type=float, default=1,
                     help='beta value for f-beta score')
 
 
@@ -160,8 +160,8 @@ try:
             plt.legend()
             plt.xlabel('Threshold (log scale)')
             plt.ylabel('Value')
-            plt.title('Anomaly Detection on ' + args.data +
-                      ' Dataset', fontsize=18, fontweight='bold')
+            plt.title('Anomaly Detection on ' + args.data
+                      + ' Dataset', fontsize=18, fontweight='bold')
             plt.savefig(str(save_dir.joinpath(
                 'fig_f_beta_channel'+str(channel_idx)).with_suffix('.png')))
             plt.close()
@@ -190,9 +190,11 @@ try:
             #          color='hotpink', marker='.', linestyle='--', markersize=1, linewidth=1)
             ax2.legend(loc='upper right')
             ax2.set_ylabel('anomaly score', fontsize=15)
-            plt.axvspan(185, 195, color='yellow', alpha=0.3)
-            plt.title('Anomaly Detection on ' + args.data +
-                      ' Dataset', fontsize=18, fontweight='bold')
+            plt.axvspan(132, 136, color='yellow', alpha=0.3)
+            plt.axvspan(558, 562, color='yellow', alpha=0.3)
+            plt.axvspan(585, 589, color='yellow', alpha=0.3)
+            plt.title('Anomaly Detection on ' + args.data
+                      + ' Dataset', fontsize=18, fontweight='bold')
             plt.tight_layout()
             plt.xlim([0, len(test_dataset)])
             plt.savefig(str(save_dir.joinpath(

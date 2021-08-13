@@ -98,8 +98,8 @@ def anomalyScore(args, model, dataset, mean, cov, channel_idx=0, score_predictor
         mult3 = mult1.t()  # [ prediction_window_size * 1 ]
         score = torch.mm(mult1, torch.mm(mult2, mult3))
         i += 1
-        if score > 1000:
-            error_point.append(i)
+        if score >= 1.178747924804687500e+03:
+            error_point.append(i+1)
         scores.append(score[0][0])
     print('anomaly is on the', error_point, 'locations')
     scores = torch.stack(scores)
@@ -155,7 +155,10 @@ def get_precision_recall(args, score, label, num_samples, beta=1.0, sampling='lo
     precision = torch.FloatTensor(precision)
     recall = torch.FloatTensor(recall)
 
-    f1 = (1 + beta ** 2) * (precision * recall).div(beta **
-                                                    2 * precision + recall + 1e-7)
-
+    f1 = (1 + beta ** 2) * (precision * recall).div(beta
+                                                    ** 2 * precision + recall + 1e-7)
+    # th = th.Tensor.cpu()
+    th = th.cpu().data.numpy()
+    np.savetxt('f1.txt', f1)
+    np.savetxt('τ.txt', th)
     return precision, recall, f1
