@@ -22,29 +22,24 @@ def fit_norm_distribution_param(args, model, train_dataset, channel_idx=0):
             for prediction_step in range(1, args.prediction_window_size):
                 out, hidden = model.forward(out, hidden)
                 predictions[t].append(out.data.cpu()[0][0][channel_idx])
-
             if t >= args.prediction_window_size:
                 for step in range(args.prediction_window_size):
                     organized[t].append(
                         predictions[step+t-args.prediction_window_size][args.prediction_window_size-1-step])
+                    # print(step+t-args.prediction_window_size)
+                    # print(args.prediction_window_size-1-step)
                 organized[t] = torch.FloatTensor(organized[t]).to(args.device)
+                # print(organized)
                 errors[t] = organized[t] - train_dataset[t][0][channel_idx]
                 errors[t] = errors[t].unsqueeze(0)
     errors_tensor = torch.cat(errors[args.prediction_window_size:], dim=0)
     mean = errors_tensor.mean(dim=0)
-    # print(mean)
-    cov = errors_tensor.t().mm(errors_tensor)/errors_tensor.size(0) - \
-        mean.unsqueeze(1).mm(mean.unsqueeze(0))
-    print(errors_tensor.size(), mean.size())
-    # a = errors_tensor.t().mm(errors_tensor)
-    # b = errors_tensor.size(0) - mean.unsqueeze(1).mm(mean.unsqueeze(0))
-    # c = a/b
-    # print(a.size(), a, b.size(), b, c.size(), c)
-    # print(mean.unsqueeze(1))
-    # print(mean.unsqueeze(0))
+    # cov2 = errors_tensor.t().mm(errors_tensor)/errors_tensor.size(0) - \
+    #     mean.unsqueeze(1).mm(mean.unsqueeze(0))
     # cov: positive-semidefinite and symmetric.
-    # print(mean.size())
-    # print(cov.size())
+    cov = (((errors_tensor-mean).t()).mm(errors_tensor-mean)) / \
+        errors_tensor.size(0)
+
     return mean, cov
 
 
@@ -89,19 +84,17 @@ def anomalyScore(args, model, dataset, mean, cov, channel_idx=0, score_predictor
 
     predicted_scores = np.array(predicted_scores)
     scores = []
-    error_point = []
-    i = -1
     for error in errors:
         mult1 = error-mean.unsqueeze(0)  # [ 1 * prediction_window_size ]
         # [ prediction_window_size * prediction_window_size ]
         mult2 = torch.inverse(cov)
         mult3 = mult1.t()  # [ prediction_window_size * 1 ]
         score = torch.mm(mult1, torch.mm(mult2, mult3))
-        i += 1
-        if score >= 1.178747924804687500e+03:
-            error_point.append(i+1)
         scores.append(score[0][0])
-    print('anomaly is on the', error_point, 'locations')
+    #     i += 1
+    #     if score >= 1.524916137695312500e+03:
+    #         error_point.append(str(i+1))
+    # print('Detect anomaly is on the', error_point)
     scores = torch.stack(scores)
     rearranged = torch.cat(rearranged, dim=0)
     errors = torch.cat(errors, dim=0)
@@ -109,7 +102,7 @@ def anomalyScore(args, model, dataset, mean, cov, channel_idx=0, score_predictor
     return scores, rearranged, errors, hiddens, predicted_scores
 
 
-def get_precision_recall(args, score, label, num_samples, beta=1.0, sampling='log', predicted_score=None):
+def get_precision_recall(mean, cov, errors, args, score, label, num_samples, beta=1.0, sampling='log', predicted_score=None):
     '''
     :param args:
     :param score: anomaly scores
@@ -127,8 +120,9 @@ def get_precision_recall(args, score, label, num_samples, beta=1.0, sampling='lo
     if sampling == 'log':
         # Sample thresholds logarithmically
         # The sampled thresholds are logarithmically spaced between: math:`10 ^ {start}` and: math:`10 ^ {end}`.
-        th = torch.logspace(0, torch.log10(
-            torch.tensor(maximum)), num_samples).to(args.device)
+        # th = torch.logspace(0, torch.log10(torch.tensor(maximum)), num_samples).to(args.device)
+        th = torch.logspace(0, torch.log10(maximum),
+                            num_samples).to(args.device)
     else:
         # Sample thresholds equally
         # The sampled thresholds are equally spaced points between: attr:`start` and: attr:`end`
@@ -158,7 +152,26 @@ def get_precision_recall(args, score, label, num_samples, beta=1.0, sampling='lo
     f1 = (1 + beta ** 2) * (precision * recall).div(beta
                                                     ** 2 * precision + recall + 1e-7)
     # th = th.Tensor.cpu()
+    error_point = []
     th = th.cpu().data.numpy()
     np.savetxt('f1.txt', f1)
     np.savetxt('τ.txt', th)
-    return precision, recall, f1
+    th = np.loadtxt('τ.txt')
+    maxscore = f1.max().item()
+    i = -1
+    numpyf1 = np.loadtxt('f1.txt')
+    x = 1000 - np.size(numpyf1)
+    th = th[x:]
+    τ = th[numpyf1 == maxscore]
+    τ = float(τ[0:1])
+    for error in errors:
+        mult1 = error-mean.unsqueeze(0)  # [ 1 * prediction_window_size ]
+        # [ prediction_window_size * prediction_window_size ]
+        mult2 = torch.inverse(cov)
+        mult3 = mult1.t()  # [ prediction_window_size * 1 ]
+        score = torch.mm(mult1, torch.mm(mult2, mult3))
+        i += 1
+        if score >= τ:
+            error_point.append(str(i+1))
+
+    return precision, recall, f1, error_point

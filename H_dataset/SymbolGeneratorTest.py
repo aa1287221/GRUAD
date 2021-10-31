@@ -16,7 +16,7 @@ mu = 2    # one symbol combined with two bits for QAM or QPSK (LJS)
 # payloadbits per OFDM version 2 (decided by how many data carriers per OFDM , LJS)
 # payloadBits_per_OFDM = K * mu
 
-SNRdb = 50  # signal to noise-ratio in dB at the receiver
+SNRdb = 10  # signal to noise-ratio in dB at the receiver
 
 mapping_table = {
     (0, 0): -1 - 1j,
@@ -45,31 +45,46 @@ def addCP(OFDM_time):
 
 
 # construct the another version is including impulse noise(LJS)
-def channel_BG(signal, SNRdb):
+def channel_BG(signal, channelResponse, SNRdb):
     # Bernoulli-Gaussian channel          # lJS
-    IGR = 100  # impulse gaussian ratio
-    prob = 0.002  # prob
-    # convolved = np.convolve(signal, channelResponse)
-    signal_power = np.mean(abs(signal**2))
-    print(signal_power)
+    # IGR = 50  # impulse gaussian ratio
+    prob = 0.001  # prob
+    convolved = np.convolve(signal, channelResponse)
+    signal_power = np.mean(abs(convolved**2))
     sigma2 = signal_power * 10**(-SNRdb / 10)      # (signal_power/2)  (LJS)
-    sigma3 = sigma2 * IGR
-    Gaussian = np.random.randn(*signal.shape) + 1j * \
-        np.random.randn(*signal.shape)
-    power1 = np.zeros([*signal.shape])
-    power2 = np.zeros([*signal.shape])
+    # sigma3 = sigma2 * IGR
+    sigma3 = 15
+    Gaussian = np.random.randn(*convolved.shape) + 1j * \
+        np.random.randn(*convolved.shape)
+    power1 = np.zeros([*convolved.shape])
+    power2 = np.zeros([*convolved.shape])
     noise_position = []
-    print(sigma2)
-    print(sigma3)
-    for i in range(*signal.shape):
+    print('Channel Length :', len(channelResponse))
+    print('Bits Length :', len(convolved))
+    # print('IGR :', IGR)
+    print('Signal Power :', signal_power)
+    print('AWGN Power :', sigma2)
+    print('Impulse Power :', sigma3)
+    print('SNR:', SNRdb)
+    print('Impulse Probability :', prob*100, '%')
+    for i in range(*convolved.shape):
         k = np.random.rand()
         if k > prob:
             power1[i] = np.sqrt(sigma2 / 2)
             power2[i] = np.sqrt(sigma2 / 2)
-    for i in range(*signal.shape):
+    for i in range(*convolved.shape):
         k = np.random.rand()
+        n = np.random.binomial(n=1, p=0.5)
         if k <= prob:
-            if i <= 1000:
+            if n == 1:
+                power1[i] = np.sqrt(sigma3 / 2)
+                power2[i] = np.sqrt(sigma3 / 2)
+                # print('impulse_position_single =', i + 1)
+                j = i + 1
+                # position = 'single ' + str(j)
+                position = str(j)
+                noise_position.append(position)
+            else:
                 power1[i] = np.sqrt(sigma3 / 2)
                 power2[i] = np.sqrt(sigma3 / 2)
                 power1[i+1] = np.sqrt(sigma3 / 2)
@@ -80,19 +95,24 @@ def channel_BG(signal, SNRdb):
                 power2[i+3] = np.sqrt(sigma3 / 2)
                 power1[i+4] = np.sqrt(sigma3 / 2)
                 power2[i+4] = np.sqrt(sigma3 / 2)
-                print('impulse_position =', i + 1)
-                position = i + 1
-                noise_position.append(position)
+                # print('impulse_position_mutiple =', i + 1)
+                j = i + 1
+                # position = 'mutiple ' + str(j)
+                for m in range(5):
+                    position = str(j)
+                    j += 1
+                    noise_position.append(position)
+    print(noise_position)
     noise1 = np.multiply(power1, Gaussian.real)
     noise2 = np.multiply(power2, Gaussian.imag)
-    noise_BG = np.zeros([*signal.shape]).astype(complex)
+    noise_BG = np.zeros([*convolved.shape]).astype(complex)
     noise_BG.real = noise1
     noise_BG.imag = noise2
-    noise_symbol = noise_BG + signal     # NoiseSymbol
+    noise_symbol = noise_BG + convolved     # NoiseSymbol
     noise_symbol_real = noise_symbol.real
     noise_symbol_image = noise_symbol.imag
     noise_symbol = []
-    for i in range(0, K+CP):
+    for i in range(0, len(convolved)):
         noise_symbol.append(
             np.sqrt((noise_symbol_image[i]**2)+(noise_symbol_real[i]**2)))
     noise_symbol = np.array(noise_symbol)
@@ -100,13 +120,12 @@ def channel_BG(signal, SNRdb):
     np.savetxt('NoiseReal.txt', noise_BG.real)
     np.savetxt('NoiseImag.txt', noise_BG.imag)
     np.savetxt('NoiseSymbol.txt', noise_symbol)
-    np.savetxt('NoiseSymbolReal.txt', noise_BG.real + signal.real)
-    np.savetxt('NoiseSymbolImag.txt', noise_BG.imag + signal.imag)
-    np.savetxt('NoisePosition.txt', noise_position)
-    np.hstack
+    np.savetxt('NoiseSymbolReal.txt', noise_BG.real + convolved.real)
+    np.savetxt('NoiseSymbolImag.txt', noise_BG.imag + convolved.imag)
+    np.savetxt('NoisePosition.npy', noise_position, fmt="%s")
 
 
-def ofdm_simulate_BG(codeword, SNRdb):       # LJS
+def ofdm_simulate_BG(codeword, channelResponse, SNRdb):       # LJS
     # OFDM_data = np.zeros(K, dtype=complex)
     # OFDM_data[allCarriers] = pilotValue
     # OFDM_time = IDFT(OFDM_data)
@@ -125,13 +144,33 @@ def ofdm_simulate_BG(codeword, SNRdb):       # LJS
     np.savetxt('Symbol.txt', OFDM_withCP_cordword)
     np.savetxt('SymbolReal.txt', OFDM_withCP_cordword.real)
     np.savetxt('SymbolImag.txt', OFDM_withCP_cordword.imag)
-    OFDM_RX_codeword = channel_BG(OFDM_withCP_cordword, SNRdb)
+    channel_BG(OFDM_withCP_cordword, channelResponse, SNRdb)
+
+
+H_folder_test = '../H_dataset/test/'
+test_idx_low = 301
+test_idx_high = 401
+channel_response_set_test = []
+for test_idx in range(test_idx_low, test_idx_high):
+    # print("Processing the train", train_idx, "th document")
+    H_file = H_folder_test + str(test_idx) + '.txt'
+    with open(H_file) as f:
+        for line in f:
+            numbers_str = line.split()
+            # np.shape(numbers_str)=32 x 1
+            numbers_float = [float(x) for x in numbers_str]
+            # np.shape(numbers_float)=32 x 1
+            h_response = np.asarray(numbers_float[0:int(len(numbers_float) / 2)]) +\
+                1j * \
+                np.asarray(
+                    numbers_float[int(len(numbers_float) / 2):len(numbers_float)])
+            channel_response_set_test.append(h_response)
 
 
 for index_k in range(0, 1):
     bits = np.random.binomial(n=1, p=0.5, size=(4096, ))
     print(bits)
-    ofdm_simulate_BG(bits, SNRdb)
-    # channel_response = channel_response_set_train[np.random.randint(0,len(128))]
-    # signal_output, para = ofdm_simulate_AWGN(bits,channel_response,SNRdb)
-    # np.savetxt('Symbolori.txt', bits)
+    # ofdm_simulate_BG(bits, SNRdb)
+    channel_response = channel_response_set_test[np.random.randint(
+        0, len(channel_response_set_test))]
+    ofdm_simulate_BG(bits, channel_response, SNRdb)

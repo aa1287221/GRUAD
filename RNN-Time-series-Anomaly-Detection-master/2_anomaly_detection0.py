@@ -14,7 +14,7 @@ from anomalyDetector import anomalyScore
 from anomalyDetector import get_precision_recall
 parser = argparse.ArgumentParser(
     description='PyTorch RNN Anomaly Detection Model')
-parser.add_argument('--prediction_window_size', type=int, default=10,
+parser.add_argument('--prediction_window_size', type=int, default=25,
                     help='prediction_window_size')
 parser.add_argument('--data', type=str, default='ofdm',
                     help='type of the dataset (ecg, gesture, power_demand, space_shuttle, respiration, nyc_taxi, ofdm')
@@ -114,8 +114,8 @@ try:
         # The precision, recall, f_beta scores are are calculated repeatedly,
         # sampling the threshold from 1 to the maximum anomaly score value, either equidistantly or logarithmically.
         print('=> calculating precision, recall, and f_beta')
-        precision, recall, f_beta = get_precision_recall(args, score, num_samples=1000, beta=args.beta,
-                                                         label=TimeseriesData.testLabel.to(args.device))
+        precision, recall, f_beta, error_point = get_precision_recall(mean, cov, sorted_error, args, score, num_samples=1000, beta=args.beta,
+                                                                      label=TimeseriesData.testLabel.to(args.device))
         print('data: ', args.data, ' filename: ', args.filename,
               ' f-beta (no compensation): ', f_beta.max().item(), ' beta: ', args.beta)
         if args.compensate:
@@ -168,21 +168,21 @@ try:
 
             fig, ax1 = plt.subplots(figsize=(15, 5))
             ax1.plot(target, label='Target',
-                     color='black',  marker='.', linestyle='--', markersize=1, linewidth=0.5)
-            ax1.plot(mean_prediction, label='Mean predictions',
-                     color='purple', marker='.', linestyle='--', markersize=1, linewidth=0.5)
-            ax1.plot(oneStep_prediction, label='1-step predictions',
-                     color='green', marker='.', linestyle='--', markersize=1, linewidth=0.5)
-            ax1.plot(Nstep_prediction, label=str(args.prediction_window_size) + 'step predictions',
-                     color='blue', marker='.', linestyle='--', markersize=1, linewidth=0.5)
-            ax1.plot(sorted_errors_mean, label='Absolute mean prediction errors',
-                     color='orange', marker='.', linestyle='--', markersize=1, linewidth=1.0)
+                     color='black',  marker='.', markersize=1, linewidth=0.7)
+            # ax1.plot(mean_prediction, label='Mean predictions',
+            #          color='purple', marker='.', linestyle='--', markersize=1, linewidth=0.5)
+            # ax1.plot(oneStep_prediction, label='1-step predictions',
+            #          color='green', marker='.', linestyle='--', markersize=1, linewidth=0.5)
+            # ax1.plot(Nstep_prediction, label=str(args.prediction_window_size) + 'step predictions',
+            #          color='blue', marker='.', linestyle='--', markersize=1, linewidth=0.5)
+            # ax1.plot(sorted_errors_mean, label='Absolute mean prediction errors',
+            #          color='orange', marker='.', linestyle='--', markersize=1, linewidth=1.0)
             ax1.legend(loc='upper left')
             ax1.set_ylabel('Value', fontsize=15)
             ax1.set_xlabel('Index', fontsize=15)
             ax2 = ax1.twinx()
             ax2.plot(score.numpy().reshape(-1, 1), label='Anomaly scores from \nmultivariate normal distribution',
-                     color='red', marker='.', linestyle='--', markersize=1, linewidth=1)
+                     color='red', marker='.', linestyle=':', markersize=1, linewidth=1)
             if args.compensate:
                 ax2.plot(predicted_score, label='Predicted anomaly scores from SVR',
                          color='cyan', marker='.', linestyle='--', markersize=1, linewidth=1)
@@ -190,9 +190,18 @@ try:
             #          color='hotpink', marker='.', linestyle='--', markersize=1, linewidth=1)
             ax2.legend(loc='upper right')
             ax2.set_ylabel('anomaly score', fontsize=15)
-            plt.axvspan(132, 136, color='yellow', alpha=0.3)
-            plt.axvspan(558, 562, color='yellow', alpha=0.3)
-            plt.axvspan(585, 589, color='yellow', alpha=0.3)
+            plt.axvspan(353, 353, color='yellow', alpha=0.3)
+            plt.axvspan(410, 414, color='yellow', alpha=0.3)
+            plt.axvspan(511, 511, color='yellow', alpha=0.3)
+            # plt.axvspan(624, 628, color='yellow', alpha=0.3)
+            # plt.axvspan(966, 966, color='yellow', alpha=0.3)
+            # plt.axvspan(920, 924, color='yellow', alpha=0.3)
+            # plt.axvspan(979, 979, color='yellow', alpha=0.3)
+            # plt.axvspan(2197, 2197, color='yellow', alpha=0.3)
+            # plt.axvspan(2201, 2201, color='yellow', alpha=0.3)
+            # plt.axvspan(2257, 2261, color='yellow', alpha=0.3)
+            # plt.axvspan(2264, 2268, color='yellow', alpha=0.3)
+            # plt.axvspan(2416, 2416, color='yellow', alpha=0.3)
             plt.title('Anomaly Detection on ' + args.data
                       + ' Dataset', fontsize=18, fontweight='bold')
             plt.tight_layout()
@@ -209,6 +218,8 @@ except KeyboardInterrupt:
 
 
 print('=> saving the results as pickle extensions')
+print('-' * 89)
+print('Detect anomaly is on the', error_point)
 save_dir = Path('result', args.data, args.filename).with_suffix('')
 save_dir.mkdir(parents=True, exist_ok=True)
 pickle.dump(targets, open(str(save_dir.joinpath('target.pkl')), 'wb'))

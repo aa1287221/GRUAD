@@ -24,17 +24,17 @@ parser.add_argument('--emsize', type=int, default=32,
                     help='size of rnn input features')
 parser.add_argument('--nhid', type=int, default=32,
                     help='number of hidden units per layer')
-parser.add_argument('--nlayers', type=int, default=2,
+parser.add_argument('--nlayers', type=int, default=4,
                     help='number of layers')
 parser.add_argument('--res_connection', action='store_true',
                     help='residual connection')
-parser.add_argument('--lr', type=float, default=0.0002,  # 0.0002
+parser.add_argument('--lr', type=float, default=0.0001,  # 0.0002
                     help='initial learning rate')
 parser.add_argument('--weight_decay', type=float, default=1e-4,
                     help='weight decay')
-parser.add_argument('--clip', type=float, default=1,
+parser.add_argument('--clip', type=float, default=10,
                     help='gradient clipping')
-parser.add_argument('--epochs', type=int, default=2000,
+parser.add_argument('--epochs', type=int, default=1000,
                     help='upper epoch limit')
 parser.add_argument('--batch_size', type=int, default=64, metavar='N',
                     help='batch size')
@@ -64,7 +64,7 @@ parser.add_argument('--resume', '-r',
 parser.add_argument('--pretrained', '-p',
                     help='use checkpoint model parameters and do not train anymore (default: False)',
                     action="store_true")
-parser.add_argument('--prediction_window_size', type=int, default=10,
+parser.add_argument('--prediction_window_size', type=int, default=25,
                     help='prediction_window_size')
 args = parser.parse_args()
 # Set the random seed manually for reproducibility.
@@ -138,8 +138,6 @@ def generate_output(args, epoch, model, gen_dataset, disp_uncertainty=True, star
 
                     out, hidden = model.forward(out, hidden)
 
-                    #print(out_mean,out)
-
                 else:
                     out, hidden = model.forward(
                         gen_dataset[i].unsqueeze(0), hidden)
@@ -160,9 +158,9 @@ def generate_output(args, epoch, model, gen_dataset, disp_uncertainty=True, star
         plt.figure(figsize=(15, 5))
         for i in range(target.size(-1)):
             plt.plot(target[:, :, i].numpy(), label='Target'+str(i),
-                     color='black', marker='.', linestyle='--', markersize=1, linewidth=0.5)
+                     color='black', marker='.', markersize=1, linewidth=0.5)
             plt.plot(range(endPoint), outSeq[:, i].numpy(), label='predictions for target'+str(i),
-                     color='green', marker='.', linestyle='--', markersize=1.5, linewidth=1)
+                     color='green', marker='.', linestyle=':', markersize=1.5, linewidth=1)
             # if epoch>40:
             #     plt.plot(range(startPoint, endPoint), upperlim95[:,i].numpy(), label='upperlim'+str(i),
             #              color='skyblue', marker='.', linestyle='--', markersize=1.5, linewidth=1)
@@ -174,8 +172,8 @@ def generate_output(args, epoch, model, gen_dataset, disp_uncertainty=True, star
         plt.xlim([startPoint-500, endPoint])
         plt.xlabel('Index', fontsize=15)
         plt.ylabel('Value', fontsize=15)
-        plt.title('Time-series Prediction on ' + args.data +
-                  ' Dataset', fontsize=18, fontweight='bold')
+        plt.title('Time-series Prediction on ' + args.data
+                  + ' Dataset', fontsize=18, fontweight='bold')
         plt.legend()
         plt.tight_layout()
         plt.text(startPoint-500+10, target.min(),
@@ -183,6 +181,18 @@ def generate_output(args, epoch, model, gen_dataset, disp_uncertainty=True, star
         save_dir = Path('result', args.data, args.filename).with_suffix(
             '').joinpath('fig_prediction')
         save_dir.mkdir(parents=True, exist_ok=True)
+        plt.axvspan(1353, 1353, color='yellow', alpha=0.3)
+        plt.axvspan(1410, 1414, color='yellow', alpha=0.3)
+        plt.axvspan(1511, 1511, color='yellow', alpha=0.3)
+        # plt.axvspan(1624, 1628, color='yellow', alpha=0.3)
+        # plt.axvspan(1966, 1966, color='yellow', alpha=0.3)
+        # plt.axvspan(1920, 1924, color='yellow', alpha=0.3)
+        # plt.axvspan(1979, 1979, color='yellow', alpha=0.3)
+        # plt.axvspan(2197, 2197, color='yellow', alpha=0.3)
+        # plt.axvspan(2201, 2201, color='yellow', alpha=0.3)
+        # plt.axvspan(2257, 2261, color='yellow', alpha=0.3)
+        # plt.axvspan(2264, 2268, color='yellow', alpha=0.3)
+        # plt.axvspan(2416, 2416, color='yellow', alpha=0.3)
         plt.savefig(save_dir.joinpath(
             'fig_epoch'+str(epoch)).with_suffix('.png'))
         #plt.show()
@@ -321,7 +331,7 @@ if args.resume or args.pretrained:
         Path('save', args.data, 'checkpoint', args.filename).with_suffix('.pth'))
     args, start_epoch, best_val_loss = model.load_checkpoint(
         args, checkpoint, feature_dim)
-    optimizer.load_state_dict((checkpoint['optimizer']))
+    optimizer.load_state_dict(checkpoint['optimizer'])
     del checkpoint
     epoch = start_epoch
     print("=> loaded checkpoint")
