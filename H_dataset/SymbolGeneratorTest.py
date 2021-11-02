@@ -1,7 +1,7 @@
 import numpy as np
 
 K = 2048  # subcarriers = K
-CP = K // 4
+CP = K // 16
 P = 64  # number of pilot carriers per OFDM block
 #pilotValue = 1+1j
 # allCarriers = np.arange(K)  # indices of all subcarriers ([0, 1, ... K-1])
@@ -16,7 +16,7 @@ mu = 2    # one symbol combined with two bits for QAM or QPSK (LJS)
 # payloadbits per OFDM version 2 (decided by how many data carriers per OFDM , LJS)
 # payloadBits_per_OFDM = K * mu
 
-SNRdb = 10  # signal to noise-ratio in dB at the receiver
+SNRdb = 20  # signal to noise-ratio in dB at the receiver
 
 mapping_table = {
     (0, 0): -1 - 1j,
@@ -48,7 +48,7 @@ def addCP(OFDM_time):
 def channel_BG(signal, channelResponse, SNRdb):
     # Bernoulli-Gaussian channel          # lJS
     # IGR = 50  # impulse gaussian ratio
-    prob = 0.001  # prob
+    prob = 0.002  # prob
     convolved = np.convolve(signal, channelResponse)
     signal_power = np.mean(abs(convolved**2))
     sigma2 = signal_power * 10**(-SNRdb / 10)      # (signal_power/2)  (LJS)
@@ -102,7 +102,7 @@ def channel_BG(signal, channelResponse, SNRdb):
                     position = str(j)
                     j += 1
                     noise_position.append(position)
-    print(noise_position)
+    print('Real anomaly is on the', noise_position)
     noise1 = np.multiply(power1, Gaussian.real)
     noise2 = np.multiply(power2, Gaussian.imag)
     noise_BG = np.zeros([*convolved.shape]).astype(complex)

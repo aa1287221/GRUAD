@@ -26,10 +26,7 @@ def fit_norm_distribution_param(args, model, train_dataset, channel_idx=0):
                 for step in range(args.prediction_window_size):
                     organized[t].append(
                         predictions[step+t-args.prediction_window_size][args.prediction_window_size-1-step])
-                    # print(step+t-args.prediction_window_size)
-                    # print(args.prediction_window_size-1-step)
                 organized[t] = torch.FloatTensor(organized[t]).to(args.device)
-                # print(organized)
                 errors[t] = organized[t] - train_dataset[t][0][channel_idx]
                 errors[t] = errors[t].unsqueeze(0)
     errors_tensor = torch.cat(errors[args.prediction_window_size:], dim=0)
