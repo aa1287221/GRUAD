@@ -210,7 +210,8 @@ try:
                 'fig_scores_channel'+str(channel_idx)).with_suffix('.png')))
             #plt.show()
             plt.close()
-
+            true = np.loadtxt('NoisePosition.npy')
+            np.in1d(true, error_point)
 
 except KeyboardInterrupt:
     print('-' * 89)
