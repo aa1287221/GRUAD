@@ -1,7 +1,7 @@
 import numpy as np
 
-K = 2048  # subcarriers = K
-CP = K // 16
+K = 1024  # subcarriers = K
+CP = K // 32
 P = 64  # number of pilot carriers per OFDM block
 #pilotValue = 1+1j
 # allCarriers = np.arange(K)  # indices of all subcarriers ([0, 1, ... K-1])
@@ -14,7 +14,7 @@ mu = 2    # one symbol combined with two bits for QAM or QPSK (LJS)
 # payloadBits_per_OFDM = len(dataCarriers) * mu
 
 # payloadbits per OFDM version 2 (decided by how many data carriers per OFDM , LJS)
-# payloadBits_per_OFDM = K * mu
+payloadBits_per_OFDM = K * mu
 
 SNRdb = 20  # signal to noise-ratio in dB at the receiver
 
@@ -48,7 +48,7 @@ def addCP(OFDM_time):
 def channel_BG(signal, channelResponse, SNRdb):
     # Bernoulli-Gaussian channel          # lJS
     # IGR = 50  # impulse gaussian ratio
-    prob = 0.002  # prob
+    prob = 0.0025  # prob
     convolved = np.convolve(signal, channelResponse)
     signal_power = np.mean(abs(convolved**2))
     sigma2 = signal_power * 10**(-SNRdb / 10)      # (signal_power/2)  (LJS)
@@ -168,8 +168,8 @@ for test_idx in range(test_idx_low, test_idx_high):
 
 
 for index_k in range(0, 1):
-    bits = np.random.binomial(n=1, p=0.5, size=(4096, ))
-    print(bits)
+    bits = np.random.binomial(n=1, p=0.5, size=(payloadBits_per_OFDM, ))
+    # print(bits)
     # ofdm_simulate_BG(bits, SNRdb)
     channel_response = channel_response_set_test[np.random.randint(
         0, len(channel_response_set_test))]

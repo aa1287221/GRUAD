@@ -91,7 +91,7 @@ for dataname in urls:
                 #         1.0) if 8254 < i < 8998 or 11348 < i < 12143 or 33883 < i < 34601 else tokens.append(0.0)
                 if filepath.name == 'NoiseSymbol.txt':
                     tokens.append(
-                        1.0) if 1783 < i < 1789 or 2088 < i < 2094 else tokens.append(0.0)
+                        1.0) if 610 < i < 616 or 1421 < i < 1427 or 1428 < i < 1430 or 1689 < i < 1695 or 2028 < i < 2034 or 2106 < i < 2112 else tokens.append(0.0)
                 labeled_data.append(tokens)
 
             # Fill in the point where there is no signal value.

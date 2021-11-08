@@ -91,7 +91,7 @@ for dataname in urls:
                 #         1.0) if 8254 < i < 8998 or 11348 < i < 12143 or 33883 < i < 34601 else tokens.append(0.0)
                 if filepath.name == 'NoiseSymbol.txt':
                     tokens.append(
-                        1.0) if 343 < i < 349 or 485 < i < 491 or 545 < i < 551 or 956 < i < 958 else tokens.append(0.0)
+                        1.0) if 36 < i < 42 or 333 < i < 335 or 342 < i < 348 or 460 < i < 462 or 464 < i < 470 else tokens.append(0.0)
                 labeled_data.append(tokens)
 
             # Fill in the point where there is no signal value.
@@ -195,9 +195,9 @@ for dataname in urls:
             #         pickle.dump(labeled_data[97:2089], pkl)
             if filepath.name == 'NoiseSymbol.txt':
                 with open(str(labeled_train_dir.joinpath(filepath.name).with_suffix('.pkl')), 'wb') as pkl:
-                    pickle.dump(labeled_data[1000:], pkl)
+                    pickle.dump(labeled_data[500:], pkl)
                 with open(str(labeled_test_dir.joinpath(filepath.name).with_suffix('.pkl')), 'wb') as pkl:
-                    pickle.dump(labeled_data[:1000], pkl)
+                    pickle.dump(labeled_data[:500], pkl)
 
 # nyc_taxi_raw_path = Path('dataset/nyc_taxi/raw/nyc_taxi.csv')
 # labeled_data = []

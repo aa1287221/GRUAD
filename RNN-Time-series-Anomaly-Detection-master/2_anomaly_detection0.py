@@ -208,19 +208,30 @@ try:
             plt.xlim([0, len(test_dataset)])
             plt.savefig(str(save_dir.joinpath(
                 'fig_scores_channel'+str(channel_idx)).with_suffix('.png')))
-            #plt.show()
+            # plt.show()
             plt.close()
-            true = np.loadtxt('NoisePosition.npy')
-            np.in1d(true, error_point)
+
 
 except KeyboardInterrupt:
     print('-' * 89)
     print('Exiting from training early')
 
 
+NoiseSymbol = np.loadtxt('NoiseSymbol.txt')
+true = np.loadtxt('NoisePosition.npy', dtype=str)
+np.savetxt('error_point.npy', error_point, fmt='%s')
+error = np.loadtxt('error_point.npy', dtype=str)
+true = true.tolist()
+error = error.tolist()
+lack_error = [x for x in error if x not in true]
+extra_error = [x for x in true if x not in error]
+total_error = lack_error + extra_error
+detect_probability = 1 - (len(total_error)/len(NoiseSymbol))
 print('=> saving the results as pickle extensions')
 print('-' * 89)
 print('Detect anomaly is on the', error_point)
+print('-' * 89)
+print('Detect probability is', detect_probability)
 save_dir = Path('result', args.data, args.filename).with_suffix('')
 save_dir.mkdir(parents=True, exist_ok=True)
 pickle.dump(targets, open(str(save_dir.joinpath('target.pkl')), 'wb'))
