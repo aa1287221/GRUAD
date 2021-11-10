@@ -16,7 +16,7 @@ mu = 2    # one symbol combined with two bits for QAM or QPSK (LJS)
 # payloadbits per OFDM version 2 (decided by how many data carriers per OFDM , LJS)
 payloadBits_per_OFDM = K * mu
 
-SNRdb = 20  # signal to noise-ratio in dB at the receiver
+SNRdb = 25  # signal to noise-ratio in dB at the receiver
 
 mapping_table = {
     (0, 0): -1 - 1j,
@@ -76,32 +76,33 @@ def channel_BG(signal, channelResponse, SNRdb):
         k = np.random.rand()
         n = np.random.binomial(n=1, p=0.5)
         if k <= prob:
-            if n == 1:
-                power1[i] = np.sqrt(sigma3 / 2)
-                power2[i] = np.sqrt(sigma3 / 2)
-                # print('impulse_position_single =', i + 1)
-                j = i + 1
-                # position = 'single ' + str(j)
-                position = str(j)
-                noise_position.append(position)
-            else:
-                power1[i] = np.sqrt(sigma3 / 2)
-                power2[i] = np.sqrt(sigma3 / 2)
-                power1[i+1] = np.sqrt(sigma3 / 2)
-                power2[i+1] = np.sqrt(sigma3 / 2)
-                power1[i+2] = np.sqrt(sigma3 / 2)
-                power2[i+2] = np.sqrt(sigma3 / 2)
-                power1[i+3] = np.sqrt(sigma3 / 2)
-                power2[i+3] = np.sqrt(sigma3 / 2)
-                power1[i+4] = np.sqrt(sigma3 / 2)
-                power2[i+4] = np.sqrt(sigma3 / 2)
-                # print('impulse_position_mutiple =', i + 1)
-                j = i + 1
-                # position = 'mutiple ' + str(j)
-                for m in range(5):
+            if i <= 500:
+                if n == 1:
+                    power1[i] = np.sqrt(sigma3 / 2)
+                    power2[i] = np.sqrt(sigma3 / 2)
+                    # print('impulse_position_single =', i + 1)
+                    j = i + 1
+                    # position = 'single ' + str(j)
                     position = str(j)
-                    j += 1
                     noise_position.append(position)
+                else:
+                    power1[i] = np.sqrt(sigma3 / 2)
+                    power2[i] = np.sqrt(sigma3 / 2)
+                    power1[i+1] = np.sqrt(sigma3 / 2)
+                    power2[i+1] = np.sqrt(sigma3 / 2)
+                    power1[i+2] = np.sqrt(sigma3 / 2)
+                    power2[i+2] = np.sqrt(sigma3 / 2)
+                    power1[i+3] = np.sqrt(sigma3 / 2)
+                    power2[i+3] = np.sqrt(sigma3 / 2)
+                    power1[i+4] = np.sqrt(sigma3 / 2)
+                    power2[i+4] = np.sqrt(sigma3 / 2)
+                    # print('impulse_position_mutiple =', i + 1)
+                    j = i + 1
+                    # position = 'mutiple ' + str(j)
+                    for m in range(5):
+                        position = str(j)
+                        j += 1
+                        noise_position.append(position)
     print('Real anomaly is on the', noise_position)
     noise1 = np.multiply(power1, Gaussian.real)
     noise2 = np.multiply(power2, Gaussian.imag)
@@ -147,7 +148,7 @@ def ofdm_simulate_BG(codeword, channelResponse, SNRdb):       # LJS
     channel_BG(OFDM_withCP_cordword, channelResponse, SNRdb)
 
 
-H_folder_test = '../H_dataset/test/'
+H_folder_test = '../RNN-Time-series-Anomaly-Detection-master/test/'
 test_idx_low = 301
 test_idx_high = 401
 channel_response_set_test = []

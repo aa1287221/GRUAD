@@ -48,7 +48,7 @@ def addCP(OFDM_time):
 def channel_BG(signal, channelResponse, SNRdb):
     # Bernoulli-Gaussian channel          # lJS
     # IGR = 50  # impulse gaussian ratio
-    prob = 0.0025  # prob
+    prob = 0.005  # prob
     convolved = np.convolve(signal, channelResponse)
     signal_power = np.mean(abs(convolved**2))
     sigma2 = signal_power * 10**(-SNRdb / 10)      # (signal_power/2)  (LJS)
@@ -117,12 +117,12 @@ def channel_BG(signal, channelResponse, SNRdb):
         noise_symbol.append(
             np.sqrt((noise_symbol_image[i]**2)+(noise_symbol_real[i]**2)))
     noise_symbol = np.array(noise_symbol)
-    np.savetxt('Noise.txt', noise_BG)
-    np.savetxt('NoiseReal.txt', noise_BG.real)
-    np.savetxt('NoiseImag.txt', noise_BG.imag)
+    # np.savetxt('Noise.txt', noise_BG)
+    # np.savetxt('NoiseReal.txt', noise_BG.real)
+    # np.savetxt('NoiseImag.txt', noise_BG.imag)
+    # np.savetxt('NoiseSymbolReal.txt', noise_BG.real + convolved.real)
+    # np.savetxt('NoiseSymbolImag.txt', noise_BG.imag + convolved.imag)
     np.savetxt('NoiseSymbol.txt', noise_symbol)
-    np.savetxt('NoiseSymbolReal.txt', noise_BG.real + convolved.real)
-    np.savetxt('NoiseSymbolImag.txt', noise_BG.imag + convolved.imag)
     np.savetxt('NoisePosition.npy', noise_position, fmt="%s")
 
 
@@ -141,10 +141,10 @@ def ofdm_simulate_BG(codeword, channelResponse, SNRdb):       # LJS
     OFDM_data_codeword = symbol
     OFDM_time_codeword = np.fft.ifft(OFDM_data_codeword) * np.sqrt(K)
     OFDM_withCP_cordword = addCP(OFDM_time_codeword)
-    np.savetxt('PreSymbol.txt', OFDM_data_codeword)
-    np.savetxt('Symbol.txt', OFDM_withCP_cordword)
-    np.savetxt('SymbolReal.txt', OFDM_withCP_cordword.real)
-    np.savetxt('SymbolImag.txt', OFDM_withCP_cordword.imag)
+    # np.savetxt('PreSymbol.txt', OFDM_data_codeword)
+    # np.savetxt('Symbol.txt', OFDM_withCP_cordword)
+    # np.savetxt('SymbolReal.txt', OFDM_withCP_cordword.real)
+    # np.savetxt('SymbolImag.txt', OFDM_withCP_cordword.imag)
     channel_BG(OFDM_withCP_cordword, channelResponse, SNRdb)
 
 
