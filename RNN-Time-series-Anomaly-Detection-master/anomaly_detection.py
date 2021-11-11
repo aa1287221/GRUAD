@@ -14,7 +14,7 @@ from anomalyDetector import anomalyScore
 from anomalyDetector import get_precision_recall
 parser = argparse.ArgumentParser(
     description='PyTorch RNN Anomaly Detection Model')
-parser.add_argument('--prediction_window_size', type=int, default=25,
+parser.add_argument('--prediction_window_size', type=int, default=10,
                     help='prediction_window_size')
 parser.add_argument('--data', type=str, default='ofdm',
                     help='type of the dataset (ecg, gesture, power_demand, space_shuttle, respiration, nyc_taxi, ofdm')
@@ -24,7 +24,7 @@ parser.add_argument('--save_fig', '-s', action='store_true',
                     help='save results as figures')
 parser.add_argument('--compensate', action='store_true',
                     help='compensate anomaly score using anomaly score esimation')
-parser.add_argument('--beta', type=float, default=1,
+parser.add_argument('--beta', type=float, default=0.1,
                     help='beta value for f-beta score')
 
 
@@ -67,7 +67,7 @@ model = model.RNNPredictor(rnn_type=args.model,
                            nlayers=args.nlayers,
                            res_connection=args.res_connection).to(args.device)
 model.load_state_dict(checkpoint['state_dict'])
-#del checkpoint
+# del checkpoint
 
 scores, predicted_scores, precisions, recalls, f_betas = list(
 ), list(), list(), list(), list()
@@ -114,8 +114,8 @@ try:
         # The precision, recall, f_beta scores are are calculated repeatedly,
         # sampling the threshold from 1 to the maximum anomaly score value, either equidistantly or logarithmically.
         print('=> calculating precision, recall, and f_beta')
-        precision, recall, f_beta, error_point = get_precision_recall(mean, cov, sorted_error, args, score, num_samples=1000, beta=args.beta,
-                                                                      label=TimeseriesData.testLabel.to(args.device))
+        precision, recall, f_beta, error_point, accuracy = get_precision_recall(mean, cov, sorted_error, args, score, num_samples=1000, beta=args.beta,
+                                                                                label=TimeseriesData.testLabel.to(args.device))
         print('data: ', args.data, ' filename: ', args.filename,
               ' f-beta (no compensation): ', f_beta.max().item(), ' beta: ', args.beta)
         if args.compensate:
@@ -190,10 +190,10 @@ try:
             #          color='hotpink', marker='.', linestyle='--', markersize=1, linewidth=1)
             ax2.legend(loc='upper right')
             ax2.set_ylabel('anomaly score', fontsize=15)
-            plt.axvspan(344, 348, color='yellow', alpha=0.3)
-            plt.axvspan(486, 490, color='yellow', alpha=0.3)
-            plt.axvspan(546, 550, color='yellow', alpha=0.3)
-            plt.axvspan(957, 957, color='yellow', alpha=0.3)
+            # plt.axvspan(344, 348, color='yellow', alpha=0.3)
+            # plt.axvspan(486, 490, color='yellow', alpha=0.3)
+            # plt.axvspan(546, 550, color='yellow', alpha=0.3)
+            # plt.axvspan(957, 957, color='yellow', alpha=0.3)
             # plt.axvspan(1078, 1082, color='yellow', alpha=0.3)
             # plt.axvspan(1118, 1118, color='yellow', alpha=0.3)
             # plt.axvspan(1265, 1269, color='yellow', alpha=0.3)
@@ -217,23 +217,24 @@ except KeyboardInterrupt:
     print('Exiting from training early')
 
 
-NoiseSymbol = np.loadtxt(
-    '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-master/dataset/ofdm/raw/NoiseSymbol.txt')
-true = np.loadtxt(
-    '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-master/dataset/ofdm/raw/NoisePosition.npy', dtype=str)
-np.savetxt('error_point.npy', error_point, fmt='%s')
-error = np.loadtxt('error_point.npy', dtype=str)
-true = true.tolist()
-error = error.tolist()
-lack_error = [x for x in error if x not in true]
-extra_error = [x for x in true if x not in error]
-total_error = lack_error + extra_error
-detect_probability = 1 - (len(total_error)/len(NoiseSymbol))
+# NoiseSymbol = np.loadtxt(
+#     '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-master/dataset/ofdm/raw/NoiseSymbol.txt')
+# true = np.loadtxt(
+#     '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-master/dataset/ofdm/raw/NoisePosition.npy', dtype=str)
+# np.savetxt('error_point.npy', error_point, fmt='%s')
+# error = np.loadtxt('error_point.npy', dtype=str)
+# true = true.tolist()
+# error = error.tolist()
+# lack_error = [x for x in error if x not in true]
+# extra_error = [x for x in true if x not in error]
+# total_error = lack_error + extra_error
+# detect_probability = 1 - (len(total_error)/len(NoiseSymbol))
 print('=> saving the results as pickle extensions')
 print('-' * 89)
 print('Detect anomaly is on the', error_point)
 print('-' * 89)
-print('Detect probability is', detect_probability)
+# print('Detect probability is', detect_probability)
+print('Accuracy is', accuracy.max().item())
 save_dir = Path('result', args.data, args.filename).with_suffix('')
 save_dir.mkdir(parents=True, exist_ok=True)
 pickle.dump(targets, open(str(save_dir.joinpath('target.pkl')), 'wb'))

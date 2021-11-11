@@ -37,7 +37,7 @@ def generate_dataset():
                     if filepath.name == 'NoiseSymbol.txt':
                         if i == int(NoisePosition[k])-1:
                             tokens.append(1.0)
-                            if k < 10:
+                            if k < len(NoisePosition)-1:
                                 k += 1
                         else:
                             tokens.append(0.0)

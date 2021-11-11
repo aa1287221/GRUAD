@@ -1,5 +1,8 @@
 import numpy as np
 
+Noise_Position_filepath = '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-master/dataset/ofdm/raw/NoisePosition.npy'
+Noise_Symbol_filepath = '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-master/dataset/ofdm/raw/NoiseSymbol.txt'
+
 K = 1024  # subcarriers = K
 CP = K // 32
 P = 64  # number of pilot carriers per OFDM block
@@ -7,7 +10,7 @@ mu = 2    # one symbol combined with two bits for QAM or QPSK (LJS)
 # payloadbits per OFDM version 2 (decided by how many data carriers per OFDM , LJS)
 payloadBits_per_OFDM = K * mu
 
-SNRdb = 20  # signal to noise-ratio in dB at the receiver
+SNRdb = 5  # signal to noise-ratio in dB at the receiver
 
 mapping_table = {
     (0, 0): -1 - 1j,
@@ -18,7 +21,12 @@ mapping_table = {
 
 demapping_table = {v: k for k, v in mapping_table.items()}
 
-total_detect_probability = 0
+checkpoint = np.loadtxt('checkpoint.txt')
+valid_epochs = int(checkpoint[1])
+total_accuracy = float(checkpoint[0])
+total_fbeta = float(checkpoint[2])
+total_precision = float(checkpoint[3])
+total_recall = float(checkpoint[4])
 
 
 def anomaly_detection():
@@ -38,7 +46,7 @@ def anomaly_detection():
     from anomalyDetector import get_precision_recall
     parser = argparse.ArgumentParser(
         description='PyTorch RNN Anomaly Detection Model')
-    parser.add_argument('--prediction_window_size', type=int, default=25,
+    parser.add_argument('--prediction_window_size', type=int, default=10,
                         help='prediction_window_size')
     parser.add_argument('--data', type=str, default='ofdm',
                         help='type of the dataset (ecg, gesture, power_demand, space_shuttle, respiration, nyc_taxi, ofdm')
@@ -48,11 +56,11 @@ def anomaly_detection():
                         help='save results as figures')
     parser.add_argument('--compensate', action='store_true',
                         help='compensate anomaly score using anomaly score esimation')
-    parser.add_argument('--beta', type=float, default=1,
+    parser.add_argument('--beta', type=float, default=0.1,
                         help='beta value for f-beta score')
 
     args_ = parser.parse_args()
-    # print('-' * 89)
+    print('-' * 89)
     # print("=> loading checkpoint ")
     checkpoint = torch.load(
         str(Path('save', args_.data, 'checkpoint', args_.filename).with_suffix('.pth')))
@@ -135,8 +143,8 @@ def anomaly_detection():
         # The precision, recall, f_beta scores are are calculated repeatedly,
         # sampling the threshold from 1 to the maximum anomaly score value, either equidistantly or logarithmically.
         # print('=> calculating precision, recall, and f_beta')
-        precision, recall, f_beta, error_point = get_precision_recall(mean, cov, sorted_error, args, score, num_samples=1000, beta=args.beta,
-                                                                      label=TimeseriesData.testLabel.to(args.device))
+        precision, recall, f_beta, error_point, accuracy, threshold = get_precision_recall(mean, cov, sorted_error, args, score, num_samples=1000, beta=args.beta,
+                                                                                           label=TimeseriesData.testLabel.to(args.device))
         # print('data: ', args.data, ' filename: ', args.filename,
         #       ' f-beta (no compensation): ', f_beta.max().item(), ' beta: ', args.beta)
         if args.compensate:
@@ -171,84 +179,22 @@ def anomaly_detection():
         precisions.append(precision), recalls.append(
             recall), f_betas.append(f_beta)
 
-        if args.save_fig:
-            save_dir = Path('result', args.data, args.filename).with_suffix(
-                '').joinpath('fig_detection')
-            save_dir.mkdir(parents=True, exist_ok=True)
-            plt.plot(precision.cpu().numpy(), label='precision')
-            plt.plot(recall.cpu().numpy(), label='recall')
-            plt.plot(f_beta.cpu().numpy(), label='f1')
-            plt.legend()
-            plt.xlabel('Threshold (log scale)')
-            plt.ylabel('Value')
-            plt.title('Anomaly Detection on ' + args.data
-                      + ' Dataset', fontsize=18, fontweight='bold')
-            plt.savefig(str(save_dir.joinpath(
-                'fig_f_beta_channel'+str(channel_idx)).with_suffix('.png')))
-            plt.close()
-
-            fig, ax1 = plt.subplots(figsize=(15, 5))
-            ax1.plot(target, label='Target',
-                     color='black',  marker='.', markersize=1, linewidth=0.7)
-            # ax1.plot(mean_prediction, label='Mean predictions',
-            #          color='purple', marker='.', linestyle='--', markersize=1, linewidth=0.5)
-            # ax1.plot(oneStep_prediction, label='1-step predictions',
-            #          color='green', marker='.', linestyle='--', markersize=1, linewidth=0.5)
-            # ax1.plot(Nstep_prediction, label=str(args.prediction_window_size) + 'step predictions',
-            #          color='blue', marker='.', linestyle='--', markersize=1, linewidth=0.5)
-            # ax1.plot(sorted_errors_mean, label='Absolute mean prediction errors',
-            #          color='orange', marker='.', linestyle='--', markersize=1, linewidth=1.0)
-            ax1.legend(loc='upper left')
-            ax1.set_ylabel('Value', fontsize=15)
-            ax1.set_xlabel('Index', fontsize=15)
-            ax2 = ax1.twinx()
-            ax2.plot(score.numpy().reshape(-1, 1), label='Anomaly scores from \nmultivariate normal distribution',
-                     color='red', marker='.', linestyle=':', markersize=1, linewidth=1)
-            if args.compensate:
-                ax2.plot(predicted_score, label='Predicted anomaly scores from SVR',
-                         color='cyan', marker='.', linestyle='--', markersize=1, linewidth=1)
-            # ax2.plot(score.numpy().reshape(-1, 1)/(predicted_score+1), label='Anomaly scores from \nmultivariate normal distribution',
-            #          color='hotpink', marker='.', linestyle='--', markersize=1, linewidth=1)
-            ax2.legend(loc='upper right')
-            ax2.set_ylabel('anomaly score', fontsize=15)
-            plt.axvspan(344, 348, color='yellow', alpha=0.3)
-            plt.axvspan(486, 490, color='yellow', alpha=0.3)
-            plt.axvspan(546, 550, color='yellow', alpha=0.3)
-            plt.axvspan(957, 957, color='yellow', alpha=0.3)
-            # plt.axvspan(1078, 1082, color='yellow', alpha=0.3)
-            # plt.axvspan(1118, 1118, color='yellow', alpha=0.3)
-            # plt.axvspan(1265, 1269, color='yellow', alpha=0.3)
-            # plt.axvspan(1533, 1537, color='yellow', alpha=0.3)
-            # plt.axvspan(1725, 1725, color='yellow', alpha=0.3)
-            # plt.axvspan(1733, 1737, color='yellow', alpha=0.3)
-            # plt.axvspan(1841, 1841, color='yellow', alpha=0.3)
-            # plt.axvspan(1864, 1868, color='yellow', alpha=0.3)
-            plt.title('Anomaly Detection on ' + args.data
-                      + ' Dataset', fontsize=18, fontweight='bold')
-            plt.tight_layout()
-            plt.xlim([0, len(test_dataset)])
-            plt.savefig(str(save_dir.joinpath(
-                'fig_scores_channel'+str(channel_idx)).with_suffix('.png')))
-            # plt.show()
-            plt.close()
-
-    NoiseSymbol = np.loadtxt(
-        '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-master/dataset/ofdm/raw/NoiseSymbol.txt')
-    true = np.loadtxt(
-        '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-master/dataset/ofdm/raw/NoisePosition.npy', dtype=str)
-    np.savetxt('error_point.npy', error_point, fmt='%s')
-    error = np.loadtxt('error_point.npy', dtype=str)
-    true = true.tolist()
-    error = error.tolist()
-    lack_error = [x for x in error if x not in true]
-    extra_error = [x for x in true if x not in error]
-    total_error = lack_error + extra_error
-    detect_probability = 1 - (len(total_error)/len(NoiseSymbol))
+    # NoiseSymbol = np.loadtxt(Noise_Symbol_filepath)
+    # true = np.loadtxt(Noise_Position_filepath, dtype=str)
+    # np.savetxt('error_point.npy', error_point, fmt='%s')
+    # error = np.loadtxt('error_point.npy', dtype=str)
+    # true = true.tolist()
+    # error = error.tolist()
+    # lack_error = [x for x in error if x not in true]
+    # extra_error = [x for x in true if x not in error]
+    # total_error = lack_error + extra_error
+    # detect_probability = 1 - (len(total_error)/len(NoiseSymbol))
     # print('=> saving the results as pickle extensions')
     # print('-' * 89)
     # print('Detect anomaly is on the', error_point)
     # print('-' * 89)
-    print('Detect probability is', detect_probability)
+    # print('Detect probability is', detect_probability)
+    print('Accuracy is', accuracy.max().item())
     save_dir = Path('result', args.data, args.filename).with_suffix('')
     save_dir.mkdir(parents=True, exist_ok=True)
     pickle.dump(targets, open(str(save_dir.joinpath('target.pkl')), 'wb'))
@@ -266,7 +212,16 @@ def anomaly_detection():
     pickle.dump(recalls, open(str(save_dir.joinpath('recall.pkl')), 'wb'))
     pickle.dump(f_betas, open(str(save_dir.joinpath('f_beta.pkl')), 'wb'))
     print('-' * 89)
-    return detect_probability
+    precision = precision.cpu().data.numpy().tolist()
+    recall = recall.cpu().data.numpy().tolist()
+    f_beta = f_beta.cpu().data.numpy().tolist()
+    precision = precision[f_beta.index(threshold):]
+    recall = recall[f_beta.index(threshold):]
+    f_beta = f_beta[f_beta.index(threshold):]
+    precision = np.asarray(precision).mean()
+    recall = np.asarray(recall).mean()
+    f_beta = np.asarray(f_beta).mean()
+    return accuracy.max().item(), f_beta, precision, recall
 
 
 def generate_dataset():
@@ -277,8 +232,7 @@ def generate_dataset():
     import numpy as np
     urls = dict()
     urls['ofdm'] = []
-    NoisePosition = np.loadtxt(
-        '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-master/dataset/ofdm/raw/NoisePosition.npy', dtype=str)
+    NoisePosition = np.loadtxt(Noise_Position_filepath, dtype=str)
     k = 0
     for dataname in urls:
         raw_dir = Path('dataset', dataname, 'raw')
@@ -360,6 +314,7 @@ def channel_BG(signal, channelResponse, SNRdb):
     power1 = np.zeros([*convolved.shape])
     power2 = np.zeros([*convolved.shape])
     noise_position = []
+    noise_position_res = []
     # print('Channel Length :', len(channelResponse))
     # print('Bits Length :', len(convolved))
     # print('IGR :', IGR)
@@ -386,23 +341,27 @@ def channel_BG(signal, channelResponse, SNRdb):
                 position = str(j)
                 noise_position.append(position)
             else:
-                power1[i] = np.sqrt(sigma3 / 2)
-                power2[i] = np.sqrt(sigma3 / 2)
-                power1[i+1] = np.sqrt(sigma3 / 2)
-                power2[i+1] = np.sqrt(sigma3 / 2)
-                power1[i+2] = np.sqrt(sigma3 / 2)
-                power2[i+2] = np.sqrt(sigma3 / 2)
-                power1[i+3] = np.sqrt(sigma3 / 2)
-                power2[i+3] = np.sqrt(sigma3 / 2)
-                power1[i+4] = np.sqrt(sigma3 / 2)
-                power2[i+4] = np.sqrt(sigma3 / 2)
-                # print('impulse_position_mutiple =', i + 1)
-                j = i + 1
-                # position = 'mutiple ' + str(j)
-                for m in range(5):
-                    position = str(j)
-                    j += 1
-                    noise_position.append(position)
+                if i > 10:
+                    if (i+5) < 1071:
+                        power1[i] = np.sqrt(sigma3 / 2)
+                        power2[i] = np.sqrt(sigma3 / 2)
+                        power1[i+1] = np.sqrt(sigma3 / 2)
+                        power2[i+1] = np.sqrt(sigma3 / 2)
+                        power1[i+2] = np.sqrt(sigma3 / 2)
+                        power2[i+2] = np.sqrt(sigma3 / 2)
+                        power1[i+3] = np.sqrt(sigma3 / 2)
+                        power2[i+3] = np.sqrt(sigma3 / 2)
+                        power1[i+4] = np.sqrt(sigma3 / 2)
+                        power2[i+4] = np.sqrt(sigma3 / 2)
+                        # print('impulse_position_mutiple =', i + 1)
+                        j = i + 1
+                        # position = 'mutiple ' + str(j)
+                        for m in range(5):
+                            position = str(j)
+                            j += 1
+                            noise_position.append(position)
+    [noise_position_res.append(x)
+     for x in noise_position if x not in noise_position_res]
     # print('Real anomaly is on the', noise_position)
     noise1 = np.multiply(power1, Gaussian.real)
     noise2 = np.multiply(power2, Gaussian.imag)
@@ -422,10 +381,9 @@ def channel_BG(signal, channelResponse, SNRdb):
     # np.savetxt('NoiseImag.txt', noise_BG.imag)
     # np.savetxt('NoiseSymbolReal.txt', noise_BG.real + convolved.real)
     # np.savetxt('NoiseSymbolImag.txt', noise_BG.imag + convolved.imag)
-    np.savetxt(
-        '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-master/dataset/ofdm/raw/NoiseSymbol.txt', noise_symbol)
-    np.savetxt('/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-master/dataset/ofdm/raw/NoisePosition.npy',
-               noise_position, fmt="%s")
+    np.savetxt(Noise_Symbol_filepath, noise_symbol)
+    np.savetxt(Noise_Position_filepath, noise_position_res, fmt="%s")
+    return noise_position_res
 
 
 def ofdm_simulate_BG(codeword, channelResponse, SNRdb):       # LJS
@@ -447,7 +405,8 @@ def ofdm_simulate_BG(codeword, channelResponse, SNRdb):       # LJS
     # np.savetxt('Symbol.txt', OFDM_withCP_cordword)
     # np.savetxt('SymbolReal.txt', OFDM_withCP_cordword.real)
     # np.savetxt('SymbolImag.txt', OFDM_withCP_cordword.imag)
-    channel_BG(OFDM_withCP_cordword, channelResponse, SNRdb)
+    datacheck = channel_BG(OFDM_withCP_cordword, channelResponse, SNRdb)
+    return datacheck
 
 
 H_folder_test = '../RNN-Time-series-Anomaly-Detection-master/test/'
@@ -469,17 +428,33 @@ for test_idx in range(test_idx_low, test_idx_high):
                     numbers_float[int(len(numbers_float) / 2):len(numbers_float)])
             channel_response_set_test.append(h_response)
 
-for x in range(500):
+for x in range(500-valid_epochs):
     for index_k in range(0, 1):
         bits = np.random.binomial(n=1, p=0.5, size=(payloadBits_per_OFDM, ))
         # print(bits)
         # ofdm_simulate_BG(bits, SNRdb)
         channel_response = channel_response_set_test[np.random.randint(
             0, len(channel_response_set_test))]
-        ofdm_simulate_BG(bits, channel_response, SNRdb)
+        checkpoint = []
+        datacheck = ofdm_simulate_BG(bits, channel_response, SNRdb)
+        if len(datacheck) <= 1:
+            continue
         generate_dataset()
-        detect_probability = anomaly_detection()
-        total_detect_probability += detect_probability
+        accuracy, fbeta, precision, recall = anomaly_detection()
+        total_accuracy += accuracy
+        total_fbeta += fbeta
+        total_precision += precision
+        total_recall += recall
+        valid_epochs += 1
+        avg_accuracy = total_accuracy/valid_epochs
+        avg_fbeta = total_fbeta/valid_epochs
+        avg_precision = total_precision/valid_epochs
+        avg_recall = total_recall/valid_epochs
+        checkpoint.extend(
+            [total_accuracy, valid_epochs, fbeta, precision, recall])
+        np.savetxt('checkpoint.txt', checkpoint)
+        print('epoch ' + str(valid_epochs) + '\navg.accuracy = ' + str(avg_accuracy) + ' \navg.f-beta = '
+              + str(avg_fbeta) + ' \navg.precision = ' + str(avg_precision) + ' \navg.recall = ' + str(avg_recall))
 
-avg = total_detect_probability/500
-print(avg)
+if valid_epochs == 500:
+    np.savetxt('checkpoint.txt', [0, 0, 0, 0, 0])

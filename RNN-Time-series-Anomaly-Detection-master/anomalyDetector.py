@@ -99,7 +99,7 @@ def anomalyScore(args, model, dataset, mean, cov, channel_idx=0, score_predictor
     return scores, rearranged, errors, hiddens, predicted_scores
 
 
-def get_precision_recall(mean, cov, errors, args, score, label, num_samples, beta=1.0, sampling='log', predicted_score=None):
+def get_precision_recall(mean, cov, errors, args, score, label, num_samples, beta=1.0, sampling=None, predicted_score=None):
     '''
     :param args:
     :param score: anomaly scores
@@ -127,6 +127,7 @@ def get_precision_recall(mean, cov, errors, args, score, label, num_samples, bet
 
     precision = []
     recall = []
+    accuracy = []
 
     for i in range(len(th)):
         anomaly = (score > th[i]).float()
@@ -138,29 +139,31 @@ def get_precision_recall(mean, cov, errors, args, score, label, num_samples, bet
 
         p = tp / (tp + fp + 1e-7)
         r = tp / (tp + fn + 1e-7)
-
-        if p != 0 and r != 0:
+        a = (tp + tn) / (tp + tn + fp + fn + 1e-7)
+        if p != 0 and r != 0 and a != 0:
             precision.append(p)
             recall.append(r)
+            accuracy.append(a)
 
     precision = torch.FloatTensor(precision)
     recall = torch.FloatTensor(recall)
+    accuracy = torch.FloatTensor(accuracy)
 
     f1 = (1 + beta ** 2) * (precision * recall).div(beta
                                                     ** 2 * precision + recall + 1e-7)
     # th = th.Tensor.cpu()
     error_point = []
     th = th.cpu().data.numpy()
-    np.savetxt('f1.txt', f1)
-    np.savetxt('τ.txt', th)
-    th = np.loadtxt('τ.txt')
-    maxscore = f1.max().item()
+    f1 = f1.cpu().data.numpy()
+    maxaccuracy = accuracy.max().item()
+    accuracy = accuracy.cpu().data.numpy()
+    maxscore = f1[accuracy == maxaccuracy]
     i = -1
-    numpyf1 = np.loadtxt('f1.txt')
-    x = 1000 - np.size(numpyf1)
+    x = 1000 - np.size(f1)
     th = th[x:]
-    τ = th[numpyf1 == maxscore]
+    τ = th[f1 == maxscore[0:1]]
     τ = float(τ[0:1])
+
     for error in errors:
         mult1 = error-mean.unsqueeze(0)  # [ 1 * prediction_window_size ]
         # [ prediction_window_size * prediction_window_size ]
@@ -170,5 +173,6 @@ def get_precision_recall(mean, cov, errors, args, score, label, num_samples, bet
         i += 1
         if score >= τ:
             error_point.append(str(i+1))
+    f1 = torch.FloatTensor(f1)
 
-    return precision, recall, f1, error_point
+    return precision, recall, f1, error_point, accuracy, maxscore[0:1]
