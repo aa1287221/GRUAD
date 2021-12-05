@@ -52,7 +52,7 @@ parser.add_argument('--seed', type=int, default=1111,
                     help='random seed')
 parser.add_argument('--device', type=str, default='cuda',
                     help='cuda or cpu')
-parser.add_argument('--log_interval', type=int, default=10, metavar='N',
+parser.add_argument('--log_interval', type=int, default=156, metavar='N',
                     help='report interval')
 parser.add_argument('--save_interval', type=int, default=10, metavar='N',
                     help='save interval')
@@ -64,7 +64,7 @@ parser.add_argument('--resume', '-r',
 parser.add_argument('--pretrained', '-p',
                     help='use checkpoint model parameters and do not train anymore (default: False)',
                     action="store_true")
-parser.add_argument('--prediction_window_size', type=int, default=10,
+parser.add_argument('--prediction_window_size', type=int, default=1,
                     help='prediction_window_size')
 args = parser.parse_args()
 # Set the random seed manually for reproducibility.
@@ -80,6 +80,10 @@ train_dataset = TimeseriesData.batchify(
     args, TimeseriesData.trainData, args.batch_size)
 test_dataset = TimeseriesData.batchify(
     args, TimeseriesData.testData, args.eval_batch_size)
+# train_dataset = TimeseriesData.batchify(
+#     args, TimeseriesData.trainData, 1)
+# test_dataset = TimeseriesData.batchify(
+#     args, TimeseriesData.testData, 1)
 gen_dataset = TimeseriesData.batchify(args, TimeseriesData.testData, 1)
 
 
@@ -104,6 +108,10 @@ criterion = nn.MSELoss()
 ###############################################################################
 
 
+def OFDM_Validation():
+    import OFDM_Validation
+
+
 def get_batch(args, source, i):
     seq_len = min(args.bptt, len(source) - 1 - i)
     data = source[i:i+seq_len]  # [ seq_len * batch_size * feature_size ]
@@ -112,7 +120,7 @@ def get_batch(args, source, i):
     return data, target
 
 
-def generate_output(args, epoch, model, gen_dataset, disp_uncertainty=True, startPoint=500, endPoint=3500):
+def generate_output(args, epoch, model, gen_dataset, disp_uncertainty=True, startPoint=0, endPoint=10000):
     if args.save_fig:
         # Turn on evaluation mode which disables dropout.
         model.eval()
@@ -170,6 +178,7 @@ def generate_output(args, epoch, model, gen_dataset, disp_uncertainty=True, star
             #          color='blue', marker='.', linestyle='--', markersize=1.5, linewidth=1)
 
         plt.xlim([startPoint-500, endPoint])
+        # plt.xlim(0, 500)
         plt.xlabel('Index', fontsize=15)
         plt.ylabel('Value', fontsize=15)
         plt.title('Time-series Prediction on ' + args.data
@@ -181,9 +190,9 @@ def generate_output(args, epoch, model, gen_dataset, disp_uncertainty=True, star
         save_dir = Path('result', args.data, args.filename).with_suffix(
             '').joinpath('fig_prediction')
         save_dir.mkdir(parents=True, exist_ok=True)
-        plt.axvspan(1353, 1353, color='yellow', alpha=0.3)
-        plt.axvspan(1410, 1414, color='yellow', alpha=0.3)
-        plt.axvspan(1511, 1511, color='yellow', alpha=0.3)
+        # plt.axvspan(1353, 1353, color='yellow', alpha=0.3)
+        # plt.axvspan(1410, 1414, color='yellow', alpha=0.3)
+        # plt.axvspan(1511, 1511, color='yellow', alpha=0.3)
         # plt.axvspan(1624, 1628, color='yellow', alpha=0.3)
         # plt.axvspan(1966, 1966, color='yellow', alpha=0.3)
         # plt.axvspan(1920, 1924, color='yellow', alpha=0.3)
@@ -271,7 +280,6 @@ def train(args, model, train_dataset, epoch):
             optimizer.step()
 
             total_loss += loss.item()
-
             if batch % args.log_interval == 0 and batch > 0:
                 cur_loss = total_loss / args.log_interval
                 elapsed = time.time() - start_time
@@ -394,3 +402,5 @@ model_dictionary = {'epoch': max(epoch, start_epoch),
                     }
 model.save_checkpoint(model_dictionary, True)
 print('-' * 89)
+
+OFDM_Validation()

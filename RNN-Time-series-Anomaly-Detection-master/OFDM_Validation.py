@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 Noise_Position_filepath = '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-master/dataset/ofdm/raw/NoisePosition.npy'
 Noise_Symbol_filepath = '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-master/dataset/ofdm/raw/NoiseSymbol.txt'
@@ -10,7 +11,7 @@ mu = 2    # one symbol combined with two bits for QAM or QPSK (LJS)
 # payloadbits per OFDM version 2 (decided by how many data carriers per OFDM , LJS)
 payloadBits_per_OFDM = K * mu
 
-SNRdb = 5  # signal to noise-ratio in dB at the receiver
+SNRdb = 20  # signal to noise-ratio in dB at the receiver
 
 mapping_table = {
     (0, 0): -1 - 1j,
@@ -21,9 +22,13 @@ mapping_table = {
 
 demapping_table = {v: k for k, v in mapping_table.items()}
 
-checkpoint = np.loadtxt('checkpoint.txt')
-valid_epochs = int(checkpoint[1])
-total_accuracy = float(checkpoint[0])
+if os.path.isfile('checkpoint.txt'):
+    checkpoint = np.loadtxt('checkpoint.txt')
+else:
+    np.savetxt('checkpoint.txt', [0, 0, 0, 0, 0])
+    checkpoint = np.loadtxt('checkpoint.txt')
+valid_epochs = int(checkpoint[0])
+total_accuracy = float(checkpoint[1])
 total_fbeta = float(checkpoint[2])
 total_precision = float(checkpoint[3])
 total_recall = float(checkpoint[4])
@@ -46,7 +51,7 @@ def anomaly_detection():
     from anomalyDetector import get_precision_recall
     parser = argparse.ArgumentParser(
         description='PyTorch RNN Anomaly Detection Model')
-    parser.add_argument('--prediction_window_size', type=int, default=10,
+    parser.add_argument('--prediction_window_size', type=int, default=1,
                         help='prediction_window_size')
     parser.add_argument('--data', type=str, default='ofdm',
                         help='type of the dataset (ecg, gesture, power_demand, space_shuttle, respiration, nyc_taxi, ofdm')
@@ -60,7 +65,7 @@ def anomaly_detection():
                         help='beta value for f-beta score')
 
     args_ = parser.parse_args()
-    print('-' * 89)
+    print('-' * 120)
     # print("=> loading checkpoint ")
     checkpoint = torch.load(
         str(Path('save', args_.data, 'checkpoint', args_.filename).with_suffix('.pth')))
@@ -179,6 +184,67 @@ def anomaly_detection():
         precisions.append(precision), recalls.append(
             recall), f_betas.append(f_beta)
 
+        if args.save_fig:
+            save_dir = Path('result', args.data, args.filename).with_suffix(
+                '').joinpath('fig_detection')
+            save_dir.mkdir(parents=True, exist_ok=True)
+            plt.plot(precision.cpu().numpy(), label='precision')
+            plt.plot(recall.cpu().numpy(), label='recall')
+            plt.plot(f_beta.cpu().numpy(), label='f1')
+            plt.legend()
+            plt.xlabel('Threshold (log scale)')
+            plt.ylabel('Value')
+            plt.title('Anomaly Detection on ' + args.data
+                      + ' Dataset', fontsize=18, fontweight='bold')
+            plt.savefig(str(save_dir.joinpath(
+                'fig_f_beta_channel'+str(channel_idx)).with_suffix('.png')))
+            plt.close()
+
+            fig, ax1 = plt.subplots(figsize=(15, 5))
+            ax1.plot(target, label='Target',
+                     color='black',  marker='.', markersize=1, linewidth=0.7)
+            # ax1.plot(mean_prediction, label='Mean predictions',
+            #          color='purple', marker='.', linestyle='--', markersize=1, linewidth=0.5)
+            # ax1.plot(oneStep_prediction, label='1-step predictions',
+            #          color='green', marker='.', linestyle='--', markersize=1, linewidth=0.5)
+            # ax1.plot(Nstep_prediction, label=str(args.prediction_window_size) + 'step predictions',
+            #          color='blue', marker='.', linestyle='--', markersize=1, linewidth=0.5)
+            # ax1.plot(sorted_errors_mean, label='Absolute mean prediction errors',
+            #          color='orange', marker='.', linestyle='--', markersize=1, linewidth=1.0)
+            ax1.legend(loc='upper left')
+            ax1.set_ylabel('Value', fontsize=15)
+            ax1.set_xlabel('Index', fontsize=15)
+            ax2 = ax1.twinx()
+            ax2.plot(score.numpy().reshape(-1, 1), label='Anomaly scores from \nmultivariate normal distribution',
+                     color='red', marker='.', linestyle=':', markersize=1, linewidth=1)
+            if args.compensate:
+                ax2.plot(predicted_score, label='Predicted anomaly scores from SVR',
+                         color='cyan', marker='.', linestyle='--', markersize=1, linewidth=1)
+            # ax2.plot(score.numpy().reshape(-1, 1)/(predicted_score+1), label='Anomaly scores from \nmultivariate normal distribution',
+            #          color='hotpink', marker='.', linestyle='--', markersize=1, linewidth=1)
+            ax2.legend(loc='upper right')
+            ax2.set_ylabel('anomaly score', fontsize=15)
+            # plt.axvspan(344, 348, color='yellow', alpha=0.3)
+            # plt.axvspan(486, 490, color='yellow', alpha=0.3)
+            # plt.axvspan(546, 550, color='yellow', alpha=0.3)
+            # plt.axvspan(957, 957, color='yellow', alpha=0.3)
+            # plt.axvspan(1078, 1082, color='yellow', alpha=0.3)
+            # plt.axvspan(1118, 1118, color='yellow', alpha=0.3)
+            # plt.axvspan(1265, 1269, color='yellow', alpha=0.3)
+            # plt.axvspan(1533, 1537, color='yellow', alpha=0.3)
+            # plt.axvspan(1725, 1725, color='yellow', alpha=0.3)
+            # plt.axvspan(1733, 1737, color='yellow', alpha=0.3)
+            # plt.axvspan(1841, 1841, color='yellow', alpha=0.3)
+            # plt.axvspan(1864, 1868, color='yellow', alpha=0.3)
+            plt.title('Anomaly Detection on ' + args.data
+                      + ' Dataset', fontsize=18, fontweight='bold')
+            plt.tight_layout()
+            plt.xlim([0, len(test_dataset)])
+            plt.savefig(str(save_dir.joinpath(
+                'fig_scores_channel'+str(channel_idx)).with_suffix('.png')))
+            # plt.show()
+            plt.close()
+
     # NoiseSymbol = np.loadtxt(Noise_Symbol_filepath)
     # true = np.loadtxt(Noise_Position_filepath, dtype=str)
     # np.savetxt('error_point.npy', error_point, fmt='%s')
@@ -190,11 +256,10 @@ def anomaly_detection():
     # total_error = lack_error + extra_error
     # detect_probability = 1 - (len(total_error)/len(NoiseSymbol))
     # print('=> saving the results as pickle extensions')
-    # print('-' * 89)
-    # print('Detect anomaly is on the', error_point)
-    # print('-' * 89)
+    print('-' * 120)
+    print('Detect anomaly is on the', error_point)
+    print('-' * 120)
     # print('Detect probability is', detect_probability)
-    print('Accuracy is', accuracy.max().item())
     save_dir = Path('result', args.data, args.filename).with_suffix('')
     save_dir.mkdir(parents=True, exist_ok=True)
     pickle.dump(targets, open(str(save_dir.joinpath('target.pkl')), 'wb'))
@@ -211,7 +276,6 @@ def anomaly_detection():
         str(save_dir.joinpath('precision.pkl')), 'wb'))
     pickle.dump(recalls, open(str(save_dir.joinpath('recall.pkl')), 'wb'))
     pickle.dump(f_betas, open(str(save_dir.joinpath('f_beta.pkl')), 'wb'))
-    print('-' * 89)
     precision = precision.cpu().data.numpy().tolist()
     recall = recall.cpu().data.numpy().tolist()
     f_beta = f_beta.cpu().data.numpy().tolist()
@@ -303,12 +367,14 @@ def addCP(OFDM_time):
 def channel_BG(signal, channelResponse, SNRdb):
     # Bernoulli-Gaussian channel          # lJS
     # IGR = 50  # impulse gaussian ratio
-    prob = 0.005  # prob
+    # prob = 0.005  # prob
+    prob = np.random.uniform(0.001, 0.01)
     convolved = np.convolve(signal, channelResponse)
     signal_power = np.mean(abs(convolved**2))
     sigma2 = signal_power * 10**(-SNRdb / 10)      # (signal_power/2)  (LJS)
     # sigma3 = sigma2 * IGR
-    sigma3 = 15
+    # sigma3 = 15
+    sigma3 = np.random.uniform(13, 17)
     Gaussian = np.random.randn(*convolved.shape) + 1j * \
         np.random.randn(*convolved.shape)
     power1 = np.zeros([*convolved.shape])
@@ -341,7 +407,7 @@ def channel_BG(signal, channelResponse, SNRdb):
                 position = str(j)
                 noise_position.append(position)
             else:
-                if i > 10:
+                if i > 1:
                     if (i+5) < 1071:
                         power1[i] = np.sqrt(sigma3 / 2)
                         power2[i] = np.sqrt(sigma3 / 2)
@@ -428,7 +494,7 @@ for test_idx in range(test_idx_low, test_idx_high):
                     numbers_float[int(len(numbers_float) / 2):len(numbers_float)])
             channel_response_set_test.append(h_response)
 
-for x in range(500-valid_epochs):
+for x in range(1000-valid_epochs):
     for index_k in range(0, 1):
         bits = np.random.binomial(n=1, p=0.5, size=(payloadBits_per_OFDM, ))
         # print(bits)
@@ -446,15 +512,18 @@ for x in range(500-valid_epochs):
         total_precision += precision
         total_recall += recall
         valid_epochs += 1
-        avg_accuracy = total_accuracy/valid_epochs
-        avg_fbeta = total_fbeta/valid_epochs
-        avg_precision = total_precision/valid_epochs
-        avg_recall = total_recall/valid_epochs
+        avg_accuracy = (total_accuracy/valid_epochs)*100
+        avg_fbeta = (total_fbeta/valid_epochs)*100
+        avg_precision = (total_precision/valid_epochs)*100
+        avg_recall = (total_recall/valid_epochs)*100
         checkpoint.extend(
-            [total_accuracy, valid_epochs, fbeta, precision, recall])
+            [valid_epochs, total_accuracy, total_fbeta, total_precision, total_recall])
         np.savetxt('checkpoint.txt', checkpoint)
-        print('epoch ' + str(valid_epochs) + '\navg.accuracy = ' + str(avg_accuracy) + ' \navg.f-beta = '
-              + str(avg_fbeta) + ' \navg.precision = ' + str(avg_precision) + ' \navg.recall = ' + str(avg_recall))
+        print('Ac:', accuracy, ' F-beta:',
+              fbeta, ' Pr:', precision, ' Rc:', recall)
+        print('-' * 120)
+        print('epoch ' + str(valid_epochs) + '\navg.accuracy = ' + str(avg_accuracy) + ' %\navg.f-beta = '
+              + str(avg_fbeta) + ' %\navg.precision = ' + str(avg_precision) + ' %\navg.recall = ' + str(avg_recall) + ' %')
 
-if valid_epochs == 500:
-    np.savetxt('checkpoint.txt', [0, 0, 0, 0, 0])
+if valid_epochs == 1000:
+    os.remove('checkpoint.txt')

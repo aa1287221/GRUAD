@@ -14,7 +14,7 @@ from anomalyDetector import anomalyScore
 from anomalyDetector import get_precision_recall
 parser = argparse.ArgumentParser(
     description='PyTorch RNN Anomaly Detection Model')
-parser.add_argument('--prediction_window_size', type=int, default=10,
+parser.add_argument('--prediction_window_size', type=int, default=1,
                     help='prediction_window_size')
 parser.add_argument('--data', type=str, default='ofdm',
                     help='type of the dataset (ecg, gesture, power_demand, space_shuttle, respiration, nyc_taxi, ofdm')
@@ -114,8 +114,8 @@ try:
         # The precision, recall, f_beta scores are are calculated repeatedly,
         # sampling the threshold from 1 to the maximum anomaly score value, either equidistantly or logarithmically.
         print('=> calculating precision, recall, and f_beta')
-        precision, recall, f_beta, error_point, accuracy = get_precision_recall(mean, cov, sorted_error, args, score, num_samples=1000, beta=args.beta,
-                                                                                label=TimeseriesData.testLabel.to(args.device))
+        precision, recall, f_beta, error_point, accuracy, threshold = get_precision_recall(mean, cov, sorted_error, args, score, num_samples=1000, beta=args.beta,
+                                                                                           label=TimeseriesData.testLabel.to(args.device))
         print('data: ', args.data, ' filename: ', args.filename,
               ' f-beta (no compensation): ', f_beta.max().item(), ' beta: ', args.beta)
         if args.compensate:

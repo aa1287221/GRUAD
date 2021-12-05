@@ -10,7 +10,7 @@ mu = 2    # one symbol combined with two bits for QAM or QPSK (LJS)
 # payloadbits per OFDM version 2 (decided by how many data carriers per OFDM , LJS)
 payloadBits_per_OFDM = K * mu
 
-SNRdb = 5  # signal to noise-ratio in dB at the receiver
+SNRdb = 20  # signal to noise-ratio in dB at the receiver
 
 mapping_table = {
     (0, 0): -1 - 1j,
@@ -39,7 +39,7 @@ def addCP(OFDM_time):
 
 
 # construct the another version is including impulse noise(LJS)
-def channel_BG(signal, channelResponse, SNRdb):
+def channel_BG(signal, channelResponse, SNRdb, y):
     # Bernoulli-Gaussian channel          # lJS
     # IGR = 50  # impulse gaussian ratio
     np.random.seed()
@@ -63,6 +63,7 @@ def channel_BG(signal, channelResponse, SNRdb):
     print('Impulse Power :', sigma3)
     print('SNR:', SNRdb)
     print('Impulse Probability :', prob*100, '%')
+    z = y*len(convolved)
     for i in range(*convolved.shape):
         k = np.random.rand()
         if k > prob:
@@ -72,17 +73,17 @@ def channel_BG(signal, channelResponse, SNRdb):
         k = np.random.rand()
         n = np.random.binomial(n=1, p=0.5)
         if k <= prob:
-            if i <= 495:
+            if y < 1:
                 if n == 1:
                     power1[i] = np.sqrt(sigma3 / 2)
                     power2[i] = np.sqrt(sigma3 / 2)
                     # print('impulse_position_single =', i + 1)
                     j = i + 1
                     # position = 'single ' + str(j)
-                    position = str(j)
+                    position = str(j+z)
                     noise_position.append(position)
                 else:
-                    if i > 10:
+                    if i > 1:
                         if (i+5) < 1071:
                             power1[i] = np.sqrt(sigma3 / 2)
                             power2[i] = np.sqrt(sigma3 / 2)
@@ -98,7 +99,7 @@ def channel_BG(signal, channelResponse, SNRdb):
                             j = i + 1
                             # position = 'mutiple ' + str(j)
                             for m in range(5):
-                                position = str(j)
+                                position = str(j+z)
                                 j += 1
                                 noise_position.append(position)
     [noise_position_res.append(x)
@@ -124,9 +125,10 @@ def channel_BG(signal, channelResponse, SNRdb):
     # np.savetxt('NoiseSymbolImag.txt', noise_BG.imag + convolved.imag)
     np.savetxt(Noise_Symbol_filepath, noise_symbol)
     np.savetxt(Noise_Position_filepath, noise_position_res, fmt="%s")
+    return noise_symbol, noise_position_res
 
 
-def ofdm_simulate_BG(codeword, channelResponse, SNRdb):       # LJS
+def ofdm_simulate_BG(codeword, channelResponse, SNRdb, y):       # LJS
     # OFDM_data = np.zeros(K, dtype=complex)
     # OFDM_data[allCarriers] = pilotValue
     # OFDM_time = IDFT(OFDM_data)
@@ -145,7 +147,9 @@ def ofdm_simulate_BG(codeword, channelResponse, SNRdb):       # LJS
     # np.savetxt('Symbol.txt', OFDM_withCP_cordword)
     # np.savetxt('SymbolReal.txt', OFDM_withCP_cordword.real)
     # np.savetxt('SymbolImag.txt', OFDM_withCP_cordword.imag)
-    channel_BG(OFDM_withCP_cordword, channelResponse, SNRdb)
+    noise_symbol, noise_position_res = channel_BG(
+        OFDM_withCP_cordword, channelResponse, SNRdb, y)
+    return noise_symbol, noise_position_res
 
 
 H_folder_test = '../RNN-Time-series-Anomaly-Detection-master/test/'
@@ -167,12 +171,19 @@ for test_idx in range(test_idx_low, test_idx_high):
                     numbers_float[int(len(numbers_float) / 2):len(numbers_float)])
             channel_response_set_test.append(h_response)
 
-
-for index_k in range(0, 1):
-    bits = np.random.binomial(n=1, p=0.5, size=(payloadBits_per_OFDM, ))
-    np.random.seed(6)
-    # print(bits)
-    # ofdm_simulate_BG(bits, SNRdb)
-    channel_response = channel_response_set_test[np.random.randint(
-        0, len(channel_response_set_test))]
-    ofdm_simulate_BG(bits, channel_response, SNRdb)
+total_noise_symbol = []
+total_noise_position_res = []
+for y in range(2):
+    for index_k in range(0, 1):
+        bits = np.random.binomial(n=1, p=0.5, size=(payloadBits_per_OFDM, ))
+        np.random.seed(2)
+        # print(bits)
+        # ofdm_simulate_BG(bits, SNRdb)
+        channel_response = channel_response_set_test[np.random.randint(
+            0, len(channel_response_set_test))]
+        noise_symbol, noise_position_res = ofdm_simulate_BG(
+            bits, channel_response, SNRdb, y)
+        total_noise_symbol.extend(noise_symbol)
+        total_noise_position_res.extend(noise_position_res)
+np.savetxt(Noise_Symbol_filepath, total_noise_symbol)
+np.savetxt(Noise_Position_filepath, total_noise_position_res, fmt="%s")
