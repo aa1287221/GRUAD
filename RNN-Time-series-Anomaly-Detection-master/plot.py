@@ -39,7 +39,7 @@ plt.title('OFDM Simulate on 1000 Blocks Test',
           fontsize=18, fontweight='bold')
 plt.ylabel('Precision', fontsize=10, fontweight='bold')
 plt.xlabel('SNR(Eb/N0)', fontsize=10, fontweight='bold')
-plt.setp(Pr, color='red', marker='o',
+plt.setp(Pr, color='purple', marker='o',
          linestyle='--', markersize=5, linewidth=1)
 plt.savefig('OFDM Simulate on 1000 Blocks_Precision.jpg')
 plt.ylim(0.18, 0.22)
@@ -50,6 +50,6 @@ plt.title('OFDM Simulate on 1000 Blocks Test',
           fontsize=18, fontweight='bold')
 plt.ylabel('Recall', fontsize=10, fontweight='bold')
 plt.xlabel('SNR(Eb/N0)', fontsize=10, fontweight='bold')
-plt.setp(Rc, color='red', marker='o',
+plt.setp(Rc, color='brown', marker='o',
          linestyle='--', markersize=5, linewidth=1)
 plt.savefig('OFDM Simulate on 1000 Blocks_Recall.jpg')
