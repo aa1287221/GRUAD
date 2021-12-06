@@ -11,7 +11,7 @@ mu = 2    # one symbol combined with two bits for QAM or QPSK (LJS)
 # payloadbits per OFDM version 2 (decided by how many data carriers per OFDM , LJS)
 payloadBits_per_OFDM = K * mu
 
-SNRdb = 20  # signal to noise-ratio in dB at the receiver
+SNRdb = 30  # signal to noise-ratio in dB at the receiver
 
 mapping_table = {
     (0, 0): -1 - 1j,

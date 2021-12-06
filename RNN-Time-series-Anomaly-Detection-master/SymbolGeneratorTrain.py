@@ -10,7 +10,7 @@ mu = 2    # one symbol combined with two bits for QAM or QPSK (LJS)
 # payloadbits per OFDM version 2 (decided by how many data carriers per OFDM , LJS)
 payloadBits_per_OFDM = K * mu
 
-SNRdb = 20  # signal to noise-ratio in dB at the receiver
+SNRdb = 30  # signal to noise-ratio in dB at the receiver
 
 mapping_table = {
     (0, 0): -1 - 1j,
@@ -176,7 +176,7 @@ total_noise_position_res = []
 for y in range(2):
     for index_k in range(0, 1):
         bits = np.random.binomial(n=1, p=0.5, size=(payloadBits_per_OFDM, ))
-        np.random.seed(2)
+        np.random.seed(0)
         # print(bits)
         # ofdm_simulate_BG(bits, SNRdb)
         channel_response = channel_response_set_test[np.random.randint(
