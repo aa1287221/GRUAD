@@ -232,7 +232,6 @@ def evaluate_1step_pred(args, model, test_dataset):
 
 
 def train(args, model, train_dataset, epoch):
-
     with torch.enable_grad():
         # Turn on training mode which enables dropout.
         model.train()
@@ -261,7 +260,6 @@ def train(args, model, train_dataset, epoch):
             # outSeq1 = torch.cat(outVals,dim=0)
             # hids1 = torch.cat(hids1,dim=0)
             # loss1 = criterion(outSeq1.contiguous().view(args.batch_size,-1), targetSeq.contiguous().view(args.batch_size,-1))
-
             '''Loss: Teacher forcing loss'''
             outSeq, hidden, hids = model.forward(
                 inputSeq, hidden, return_hiddens=True)
@@ -356,9 +354,9 @@ if not args.pretrained:
     # At any point you can hit Ctrl + C to break out of training early.
     try:
         for epoch in range(start_epoch, args.epochs+1):
-
             epoch_start_time = time.time()
             train(args, model, train_dataset, epoch)
+            # break
             val_loss = evaluate(args, model, test_dataset)
             print('-' * 89)
             print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.4f} | '.format(

@@ -11,7 +11,7 @@ mu = 2    # one symbol combined with two bits for QAM or QPSK (LJS)
 # payloadbits per OFDM version 2 (decided by how many data carriers per OFDM , LJS)
 payloadBits_per_OFDM = K * mu
 
-SNRdb = 30  # signal to noise-ratio in dB at the receiver
+SNRdb = 25  # signal to noise-ratio in dB at the receiver
 
 mapping_table = {
     (0, 0): -1 - 1j,
@@ -25,13 +25,14 @@ demapping_table = {v: k for k, v in mapping_table.items()}
 if os.path.isfile('checkpoint.txt'):
     checkpoint = np.loadtxt('checkpoint.txt')
 else:
-    np.savetxt('checkpoint.txt', [0, 0, 0, 0, 0])
+    np.savetxt('checkpoint.txt', [0, 0, 0, 0, 0, 0])
     checkpoint = np.loadtxt('checkpoint.txt')
 valid_epochs = int(checkpoint[0])
 total_accuracy = float(checkpoint[1])
 total_fbeta = float(checkpoint[2])
 total_precision = float(checkpoint[3])
 total_recall = float(checkpoint[4])
+total_τ = float(checkpoint[5])
 
 
 def anomaly_detection():
@@ -148,8 +149,8 @@ def anomaly_detection():
         # The precision, recall, f_beta scores are are calculated repeatedly,
         # sampling the threshold from 1 to the maximum anomaly score value, either equidistantly or logarithmically.
         # print('=> calculating precision, recall, and f_beta')
-        precision, recall, f_beta, error_point, accuracy, threshold = get_precision_recall(mean, cov, sorted_error, args, score, num_samples=1000, beta=args.beta,
-                                                                                           label=TimeseriesData.testLabel.to(args.device))
+        precision, recall, f_beta, error_point, accuracy, threshold, τ = get_precision_recall(mean, cov, sorted_error, args, score, num_samples=1000, beta=args.beta,
+                                                                                              label=TimeseriesData.testLabel.to(args.device))
         # print('data: ', args.data, ' filename: ', args.filename,
         #       ' f-beta (no compensation): ', f_beta.max().item(), ' beta: ', args.beta)
         if args.compensate:
@@ -276,16 +277,20 @@ def anomaly_detection():
         str(save_dir.joinpath('precision.pkl')), 'wb'))
     pickle.dump(recalls, open(str(save_dir.joinpath('recall.pkl')), 'wb'))
     pickle.dump(f_betas, open(str(save_dir.joinpath('f_beta.pkl')), 'wb'))
+    maxf_beta = f_beta.max().item()
     precision = precision.cpu().data.numpy().tolist()
     recall = recall.cpu().data.numpy().tolist()
     f_beta = f_beta.cpu().data.numpy().tolist()
-    precision = precision[f_beta.index(threshold):]
-    recall = recall[f_beta.index(threshold):]
-    f_beta = f_beta[f_beta.index(threshold):]
-    precision = np.asarray(precision).mean()
-    recall = np.asarray(recall).mean()
-    f_beta = np.asarray(f_beta).mean()
-    return accuracy.max().item(), f_beta, precision, recall
+    precision = precision[f_beta.index(maxf_beta)]
+    recall = recall[f_beta.index(maxf_beta)]
+    f_beta = f_beta[f_beta.index(maxf_beta)]
+    # precision = precision[f_beta.index(threshold):]
+    # recall = recall[f_beta.index(threshold):]
+    # f_beta = f_beta[f_beta.index(threshold):]
+    # precision = np.asarray(precision).mean()
+    # recall = np.asarray(recall).mean()
+    # f_beta = np.asarray(f_beta).mean()
+    return accuracy.max().item(), f_beta, precision, recall, τ
 
 
 def generate_dataset():
@@ -374,7 +379,8 @@ def channel_BG(signal, channelResponse, SNRdb):
     sigma2 = signal_power * 10**(-SNRdb / 10)      # (signal_power/2)  (LJS)
     # sigma3 = sigma2 * IGR
     # sigma3 = 15
-    sigma3 = np.random.uniform(13, 17)
+    sigma3 = signal_power * \
+        np.random.uniform(10*np.log10(10), 10*np.log10(100))
     Gaussian = np.random.randn(*convolved.shape) + 1j * \
         np.random.randn(*convolved.shape)
     power1 = np.zeros([*convolved.shape])
@@ -390,10 +396,8 @@ def channel_BG(signal, channelResponse, SNRdb):
     # print('SNR:', SNRdb)
     # print('Impulse Probability :', prob*100, '%')
     for i in range(*convolved.shape):
-        k = np.random.rand()
-        if k > prob:
-            power1[i] = np.sqrt(sigma2 / 2)
-            power2[i] = np.sqrt(sigma2 / 2)
+        power1[i] = np.sqrt(sigma2 / 2)
+        power2[i] = np.sqrt(sigma2 / 2)
     for i in range(*convolved.shape):
         k = np.random.rand()
         n = np.random.binomial(n=1, p=0.5)
@@ -407,7 +411,7 @@ def channel_BG(signal, channelResponse, SNRdb):
                 position = str(j)
                 noise_position.append(position)
             else:
-                if i > 1:
+                if i > 0:
                     if (i+5) < 1071:
                         power1[i] = np.sqrt(sigma3 / 2)
                         power2[i] = np.sqrt(sigma3 / 2)
@@ -506,24 +510,26 @@ for x in range(1000-valid_epochs):
         if len(datacheck) <= 1:
             continue
         generate_dataset()
-        accuracy, fbeta, precision, recall = anomaly_detection()
+        accuracy, fbeta, precision, recall, τ = anomaly_detection()
         total_accuracy += accuracy
         total_fbeta += fbeta
         total_precision += precision
         total_recall += recall
+        total_τ += τ
         valid_epochs += 1
         avg_accuracy = (total_accuracy/valid_epochs)*100
         avg_fbeta = (total_fbeta/valid_epochs)*100
         avg_precision = (total_precision/valid_epochs)*100
         avg_recall = (total_recall/valid_epochs)*100
+        avg_τ = (total_τ/valid_epochs)
         checkpoint.extend(
-            [valid_epochs, total_accuracy, total_fbeta, total_precision, total_recall])
+            [valid_epochs, total_accuracy, total_fbeta, total_precision, total_recall, total_τ])
         np.savetxt('checkpoint.txt', checkpoint)
         print('Ac:', accuracy, ' F-beta:',
               fbeta, ' Pr:', precision, ' Rc:', recall)
         print('-' * 120)
         print('epoch ' + str(valid_epochs) + '\navg.accuracy = ' + str(avg_accuracy) + ' %\navg.f-beta = '
-              + str(avg_fbeta) + ' %\navg.precision = ' + str(avg_precision) + ' %\navg.recall = ' + str(avg_recall) + ' %')
+              + str(avg_fbeta) + ' %\navg.precision = ' + str(avg_precision) + ' %\navg.recall = ' + str(avg_recall) + ' %\navg.τ = ' + str(avg_τ))
 
 if valid_epochs == 1000:
     os.remove('checkpoint.txt')
