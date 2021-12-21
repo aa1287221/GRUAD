@@ -11,7 +11,7 @@ mu = 2    # one symbol combined with two bits for QAM or QPSK (LJS)
 # payloadbits per OFDM version 2 (decided by how many data carriers per OFDM , LJS)
 payloadBits_per_OFDM = K * mu
 
-SNRdb = 25  # signal to noise-ratio in dB at the receiver
+SNRdb = 30  # signal to noise-ratio in dB at the receiver
 
 mapping_table = {
     (0, 0): -1 - 1j,
@@ -25,7 +25,7 @@ demapping_table = {v: k for k, v in mapping_table.items()}
 if os.path.isfile('checkpoint.txt'):
     checkpoint = np.loadtxt('checkpoint.txt')
 else:
-    np.savetxt('checkpoint.txt', [0, 0, 0, 0, 0, 0])
+    np.savetxt('checkpoint.txt', [0, 0, 0, 0, 0, 0, 0])
     checkpoint = np.loadtxt('checkpoint.txt')
 valid_epochs = int(checkpoint[0])
 total_accuracy = float(checkpoint[1])
@@ -33,6 +33,7 @@ total_fbeta = float(checkpoint[2])
 total_precision = float(checkpoint[3])
 total_recall = float(checkpoint[4])
 total_τ = float(checkpoint[5])
+total_signal_power = float(checkpoint[6])
 
 
 def anomaly_detection():
@@ -380,7 +381,7 @@ def channel_BG(signal, channelResponse, SNRdb):
     # sigma3 = sigma2 * IGR
     # sigma3 = 15
     sigma3 = signal_power * \
-        np.random.uniform(10*np.log10(10), 10*np.log10(100))
+        np.random.uniform(10*np.log10(10), 10*np.log10(31.622776602))
     Gaussian = np.random.randn(*convolved.shape) + 1j * \
         np.random.randn(*convolved.shape)
     power1 = np.zeros([*convolved.shape])
@@ -453,7 +454,7 @@ def channel_BG(signal, channelResponse, SNRdb):
     # np.savetxt('NoiseSymbolImag.txt', noise_BG.imag + convolved.imag)
     np.savetxt(Noise_Symbol_filepath, noise_symbol)
     np.savetxt(Noise_Position_filepath, noise_position_res, fmt="%s")
-    return noise_position_res
+    return noise_position_res, signal_power
 
 
 def ofdm_simulate_BG(codeword, channelResponse, SNRdb):       # LJS
@@ -475,8 +476,9 @@ def ofdm_simulate_BG(codeword, channelResponse, SNRdb):       # LJS
     # np.savetxt('Symbol.txt', OFDM_withCP_cordword)
     # np.savetxt('SymbolReal.txt', OFDM_withCP_cordword.real)
     # np.savetxt('SymbolImag.txt', OFDM_withCP_cordword.imag)
-    datacheck = channel_BG(OFDM_withCP_cordword, channelResponse, SNRdb)
-    return datacheck
+    datacheck, signal_power = channel_BG(
+        OFDM_withCP_cordword, channelResponse, SNRdb)
+    return datacheck, signal_power
 
 
 H_folder_test = '../RNN-Time-series-Anomaly-Detection-master/test/'
@@ -498,7 +500,7 @@ for test_idx in range(test_idx_low, test_idx_high):
                     numbers_float[int(len(numbers_float) / 2):len(numbers_float)])
             channel_response_set_test.append(h_response)
 
-for x in range(1000-valid_epochs):
+for x in range(10000-valid_epochs):
     for index_k in range(0, 1):
         bits = np.random.binomial(n=1, p=0.5, size=(payloadBits_per_OFDM, ))
         # print(bits)
@@ -506,9 +508,11 @@ for x in range(1000-valid_epochs):
         channel_response = channel_response_set_test[np.random.randint(
             0, len(channel_response_set_test))]
         checkpoint = []
-        datacheck = ofdm_simulate_BG(bits, channel_response, SNRdb)
-        if len(datacheck) <= 1:
-            continue
+        for correct_data_check in range(10):
+            datacheck, signal_power = ofdm_simulate_BG(
+                bits, channel_response, SNRdb)
+            if len(datacheck) > 1:
+                break
         generate_dataset()
         accuracy, fbeta, precision, recall, τ = anomaly_detection()
         total_accuracy += accuracy
@@ -516,20 +520,22 @@ for x in range(1000-valid_epochs):
         total_precision += precision
         total_recall += recall
         total_τ += τ
+        total_signal_power += signal_power
         valid_epochs += 1
         avg_accuracy = (total_accuracy/valid_epochs)*100
         avg_fbeta = (total_fbeta/valid_epochs)*100
         avg_precision = (total_precision/valid_epochs)*100
         avg_recall = (total_recall/valid_epochs)*100
         avg_τ = (total_τ/valid_epochs)
+        avg_signal_pwoer = (total_signal_power/valid_epochs)
         checkpoint.extend(
-            [valid_epochs, total_accuracy, total_fbeta, total_precision, total_recall, total_τ])
+            [valid_epochs, total_accuracy, total_fbeta, total_precision, total_recall, total_τ, total_signal_power])
         np.savetxt('checkpoint.txt', checkpoint)
         print('Ac:', accuracy, ' F-beta:',
               fbeta, ' Pr:', precision, ' Rc:', recall)
         print('-' * 120)
         print('epoch ' + str(valid_epochs) + '\navg.accuracy = ' + str(avg_accuracy) + ' %\navg.f-beta = '
-              + str(avg_fbeta) + ' %\navg.precision = ' + str(avg_precision) + ' %\navg.recall = ' + str(avg_recall) + ' %\navg.τ = ' + str(avg_τ))
+              + str(avg_fbeta) + ' %\navg.precision = ' + str(avg_precision) + ' %\navg.recall = ' + str(avg_recall) + ' %\navg.τ = ' + str(avg_τ) + ' \navg.signal power = ' + str(avg_signal_pwoer))
 
-if valid_epochs == 1000:
+if valid_epochs == 10000:
     os.remove('checkpoint.txt')
