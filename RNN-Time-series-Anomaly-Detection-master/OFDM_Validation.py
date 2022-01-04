@@ -5,13 +5,11 @@ Noise_Position_filepath = '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-mas
 Noise_Symbol_filepath = '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-master/dataset/ofdm/raw/NoiseSymbol.txt'
 
 K = 1024  # subcarriers = K
-CP = K // 32
-P = 64  # number of pilot carriers per OFDM block
+CP = K // 4
+# P = 64  # number of pilot carriers per OFDM block
 mu = 2    # one symbol combined with two bits for QAM or QPSK (LJS)
 # payloadbits per OFDM version 2 (decided by how many data carriers per OFDM , LJS)
 payloadBits_per_OFDM = K * mu
-
-SNRdb = 30  # signal to noise-ratio in dB at the receiver
 
 mapping_table = {
     (0, 0): -1 - 1j,
@@ -67,7 +65,7 @@ def anomaly_detection():
                         help='beta value for f-beta score')
 
     args_ = parser.parse_args()
-    print('-' * 120)
+    # print('-' * 120)
     # print("=> loading checkpoint ")
     checkpoint = torch.load(
         str(Path('save', args_.data, 'checkpoint', args_.filename).with_suffix('.pth')))
@@ -258,9 +256,10 @@ def anomaly_detection():
     # total_error = lack_error + extra_error
     # detect_probability = 1 - (len(total_error)/len(NoiseSymbol))
     # print('=> saving the results as pickle extensions')
-    print('-' * 120)
-    print('Detect anomaly is on the', error_point)
-    print('-' * 120)
+    # print('-' * 120)
+    # print('Detect anomaly is on the', error_point)
+    # print('τ =', τ)
+    # print('-' * 120)
     # print('Detect probability is', detect_probability)
     save_dir = Path('result', args.data, args.filename).with_suffix('')
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -413,7 +412,7 @@ def channel_BG(signal, channelResponse, SNRdb):
                 noise_position.append(position)
             else:
                 if i > 0:
-                    if (i+5) < 1071:
+                    if (i+5) < len(convolved):
                         power1[i] = np.sqrt(sigma3 / 2)
                         power2[i] = np.sqrt(sigma3 / 2)
                         power1[i+1] = np.sqrt(sigma3 / 2)
@@ -433,7 +432,7 @@ def channel_BG(signal, channelResponse, SNRdb):
                             noise_position.append(position)
     [noise_position_res.append(x)
      for x in noise_position if x not in noise_position_res]
-    # print('Real anomaly is on the', noise_position)
+    # print('Real anomaly is on the', noise_position_res)
     noise1 = np.multiply(power1, Gaussian.real)
     noise2 = np.multiply(power2, Gaussian.imag)
     noise_BG = np.zeros([*convolved.shape]).astype(complex)
@@ -508,7 +507,9 @@ for x in range(10000-valid_epochs):
         channel_response = channel_response_set_test[np.random.randint(
             0, len(channel_response_set_test))]
         checkpoint = []
-        for correct_data_check in range(10):
+        for correct_data_check in range(100):
+            # signal to noise-ratio in dB at the receiver
+            SNRdb = np.random.uniform(5, 25)
             datacheck, signal_power = ofdm_simulate_BG(
                 bits, channel_response, SNRdb)
             if len(datacheck) > 1:
@@ -531,11 +532,14 @@ for x in range(10000-valid_epochs):
         checkpoint.extend(
             [valid_epochs, total_accuracy, total_fbeta, total_precision, total_recall, total_τ, total_signal_power])
         np.savetxt('checkpoint.txt', checkpoint)
-        print('Ac:', accuracy, ' F-beta:',
-              fbeta, ' Pr:', precision, ' Rc:', recall)
-        print('-' * 120)
-        print('epoch ' + str(valid_epochs) + '\navg.accuracy = ' + str(avg_accuracy) + ' %\navg.f-beta = '
-              + str(avg_fbeta) + ' %\navg.precision = ' + str(avg_precision) + ' %\navg.recall = ' + str(avg_recall) + ' %\navg.τ = ' + str(avg_τ) + ' \navg.signal power = ' + str(avg_signal_pwoer))
+        if valid_epochs % 10 == 0:
+            print('-' * 120)
+            print('Ac:', accuracy, ' F-beta:',
+                  fbeta, ' Pr:', precision, ' Rc:', recall)
+            print('-' * 120)
+            print('epoch ' + str(valid_epochs) + '\navg.accuracy = ' + str(avg_accuracy) + ' %\navg.f-beta = '
+                  + str(avg_fbeta) + ' %\navg.precision = ' + str(avg_precision) + ' %\navg.recall = ' + str(avg_recall) + ' %\navg.τ = ' + str(avg_τ) + ' \navg.signal power = ' + str(avg_signal_pwoer))
 
 if valid_epochs == 10000:
     os.remove('checkpoint.txt')
+    np.savetxt('result.txt', checkpoint)

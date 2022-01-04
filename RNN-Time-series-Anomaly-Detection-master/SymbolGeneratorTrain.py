@@ -4,13 +4,13 @@ Noise_Position_filepath = '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-mas
 Noise_Symbol_filepath = '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-master/dataset/ofdm/raw/NoiseSymbol.txt'
 
 K = 1024  # subcarriers = K
-CP = K // 32
-P = 64  # number of pilot carriers per OFDM block
+CP = K // 4
+# P = 64  # number of pilot carriers per OFDM block
 mu = 2    # one symbol combined with two bits for QAM or QPSK (LJS)
 # payloadbits per OFDM version 2 (decided by how many data carriers per OFDM , LJS)
 payloadBits_per_OFDM = K * mu
 
-SNRdb = 30  # signal to noise-ratio in dB at the receiver
+SNRdb = 20  # signal to noise-ratio in dB at the receiver
 
 mapping_table = {
     (0, 0): -1 - 1j,
@@ -82,7 +82,7 @@ def channel_BG(signal, channelResponse, SNRdb, y):
                     noise_position.append(position)
                 else:
                     if i > 0:
-                        if (i+5) < 1071:
+                        if (i+5) < len(convolved):
                             power1[i] = np.sqrt(sigma3 / 2)
                             power2[i] = np.sqrt(sigma3 / 2)
                             power1[i+1] = np.sqrt(sigma3 / 2)
