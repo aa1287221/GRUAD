@@ -5,7 +5,7 @@ Noise_Position_filepath = '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-mas
 Noise_Symbol_filepath = '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-master/dataset/ofdm/raw/NoiseSymbol.txt'
 
 K = 1024  # subcarriers = K
-CP = K // 4
+CP = K // 64
 # P = 64  # number of pilot carriers per OFDM block
 mu = 2    # one symbol combined with two bits for QAM or QPSK (LJS)
 # payloadbits per OFDM version 2 (decided by how many data carriers per OFDM , LJS)
@@ -20,6 +20,8 @@ mapping_table = {
 
 demapping_table = {v: k for k, v in mapping_table.items()}
 
+total_epochs = 100
+
 if os.path.isfile('checkpoint.txt'):
     checkpoint = np.loadtxt('checkpoint.txt')
 else:
@@ -32,6 +34,13 @@ total_precision = float(checkpoint[3])
 total_recall = float(checkpoint[4])
 total_τ = float(checkpoint[5])
 total_signal_power = float(checkpoint[6])
+
+if os.path.isfile('SNR_checkpoint.txt'):
+    SNR_checkpoint = np.loadtxt('SNR_checkpoint.txt')
+else:
+    np.savetxt('SNR_checkpoint.txt', np.reshape([
+               5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], (21, 4), order='F'))
+    SNR_checkpoint = np.loadtxt('SNR_checkpoint.txt')
 
 
 def anomaly_detection():
@@ -499,7 +508,7 @@ for test_idx in range(test_idx_low, test_idx_high):
                     numbers_float[int(len(numbers_float) / 2):len(numbers_float)])
             channel_response_set_test.append(h_response)
 
-for x in range(10000-valid_epochs):
+for x in range(total_epochs-valid_epochs):
     for index_k in range(0, 1):
         bits = np.random.binomial(n=1, p=0.5, size=(payloadBits_per_OFDM, ))
         # print(bits)
@@ -507,9 +516,11 @@ for x in range(10000-valid_epochs):
         channel_response = channel_response_set_test[np.random.randint(
             0, len(channel_response_set_test))]
         checkpoint = []
+        result = []
+        valid_result = []
         for correct_data_check in range(100):
             # signal to noise-ratio in dB at the receiver
-            SNRdb = np.random.uniform(5, 25)
+            SNRdb = np.random.randint(5, 26)
             datacheck, signal_power = ofdm_simulate_BG(
                 bits, channel_response, SNRdb)
             if len(datacheck) > 1:
@@ -529,9 +540,16 @@ for x in range(10000-valid_epochs):
         avg_recall = (total_recall/valid_epochs)*100
         avg_τ = (total_τ/valid_epochs)
         avg_signal_pwoer = (total_signal_power/valid_epochs)
+        index_SNR = SNRdb - 5
+        SNR_checkpoint[index_SNR, 1] += accuracy  # total_accuracy_index_SNR
+        SNR_checkpoint[index_SNR, 2] += fbeta  # total_fbeta_index_SNR
+        SNR_checkpoint[index_SNR, 3] += 1  # total_avg_index_SNR
         checkpoint.extend(
             [valid_epochs, total_accuracy, total_fbeta, total_precision, total_recall, total_τ, total_signal_power])
+        result.extend(
+            ['accuracy', 'fbeta', 'precision', 'recall', 'τ', 'signal_power', total_accuracy, total_fbeta, total_precision, total_recall, total_τ, total_signal_power])
         np.savetxt('checkpoint.txt', checkpoint)
+        np.savetxt('SNR_checkpoint.txt', SNR_checkpoint)
         if valid_epochs % 10 == 0:
             print('-' * 120)
             print('Ac:', accuracy, ' F-beta:',
@@ -540,6 +558,12 @@ for x in range(10000-valid_epochs):
             print('epoch ' + str(valid_epochs) + '\navg.accuracy = ' + str(avg_accuracy) + ' %\navg.f-beta = '
                   + str(avg_fbeta) + ' %\navg.precision = ' + str(avg_precision) + ' %\navg.recall = ' + str(avg_recall) + ' %\navg.τ = ' + str(avg_τ) + ' \navg.signal power = ' + str(avg_signal_pwoer))
 
-if valid_epochs == 10000:
+for SNR in range(21):
+    SNR_checkpoint[SNR, 1] = SNR_checkpoint[SNR, 1] / SNR_checkpoint[SNR, 3]
+    SNR_checkpoint[SNR, 2] = SNR_checkpoint[SNR, 2] / SNR_checkpoint[SNR, 3]
+
+if valid_epochs == total_epochs:
+    np.savetxt('result.txt', np.reshape(result, (6, 2), order='F'), fmt="%s")
+    np.savetxt('SNR_result.txt', SNR_checkpoint, fmt="%s")
     os.remove('checkpoint.txt')
-    np.savetxt('result.txt', checkpoint)
+    os.remove('SNR_checkpoint.txt')

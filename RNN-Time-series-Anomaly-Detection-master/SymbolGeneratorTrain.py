@@ -4,13 +4,13 @@ Noise_Position_filepath = '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-mas
 Noise_Symbol_filepath = '/home/wky/RNNAD/RNN-Time-series-Anomaly-Detection-master/dataset/ofdm/raw/NoiseSymbol.txt'
 
 K = 1024  # subcarriers = K
-CP = K // 4
+CP = K // 64
 # P = 64  # number of pilot carriers per OFDM block
 mu = 2    # one symbol combined with two bits for QAM or QPSK (LJS)
 # payloadbits per OFDM version 2 (decided by how many data carriers per OFDM , LJS)
 payloadBits_per_OFDM = K * mu
 
-SNRdb = 20  # signal to noise-ratio in dB at the receiver
+SNRdb = 25  # signal to noise-ratio in dB at the receiver
 
 mapping_table = {
     (0, 0): -1 - 1j,
