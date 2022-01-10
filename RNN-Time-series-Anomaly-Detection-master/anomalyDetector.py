@@ -153,18 +153,18 @@ def get_precision_recall(mean, cov, errors, args, score, label, num_samples, bet
                                                     ** 2 * precision + recall + 1e-7)
     # th = th.Tensor.cpu()
     error_point = []
-    maxf1 = f1.max().item()
+    # maxf1 = f1.max().item()
     th = th.cpu().data.numpy()
     f1 = f1.cpu().data.numpy()
-    maxaccuracy = accuracy.max().item()
+    # maxaccuracy = accuracy.max().item()
     accuracy = accuracy.cpu().data.numpy()
-    maxscore = f1[accuracy == maxaccuracy]
+    # maxscore = f1[accuracy == maxaccuracy]
     i = -1
     x = 1000 - np.size(f1)
     th = th[x:]
-    τ = th[f1 == maxf1]
+    # τ = th[f1 == maxf1]
     # τ = th[f1 == maxscore[0:1]]
-    τ = float(τ[0:1])
+    τ = np.percentile(th, 80)
     for error in errors:
         mult1 = error-mean.unsqueeze(0)  # [ 1 * prediction_window_size ]
         # [ prediction_window_size * prediction_window_size ]
@@ -175,5 +175,6 @@ def get_precision_recall(mean, cov, errors, args, score, label, num_samples, bet
         if score >= τ:
             error_point.append(str(i+1))
     f1 = torch.FloatTensor(f1)
-
-    return precision, recall, f1, error_point, accuracy, maxscore[0:1], τ
+    np.savetxt('th.txt', th)
+    # return precision, recall, f1, error_point, accuracy, maxscore[0:1], τ
+    return precision, recall, f1, error_point, accuracy, th, τ

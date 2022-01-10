@@ -20,7 +20,7 @@ mapping_table = {
 
 demapping_table = {v: k for k, v in mapping_table.items()}
 
-total_epochs = 100
+total_epochs = 10000
 
 if os.path.isfile('checkpoint.txt'):
     checkpoint = np.loadtxt('checkpoint.txt')
@@ -286,20 +286,30 @@ def anomaly_detection():
         str(save_dir.joinpath('precision.pkl')), 'wb'))
     pickle.dump(recalls, open(str(save_dir.joinpath('recall.pkl')), 'wb'))
     pickle.dump(f_betas, open(str(save_dir.joinpath('f_beta.pkl')), 'wb'))
-    maxf_beta = f_beta.max().item()
-    precision = precision.cpu().data.numpy().tolist()
-    recall = recall.cpu().data.numpy().tolist()
-    f_beta = f_beta.cpu().data.numpy().tolist()
-    precision = precision[f_beta.index(maxf_beta)]
-    recall = recall[f_beta.index(maxf_beta)]
-    f_beta = f_beta[f_beta.index(maxf_beta)]
+    # maxf_beta = f_beta.max().item()
+    # threshold = threshold.tolist()
+    # accuracy = accuracy.tolist()
+    # precision = precision.cpu().data.numpy().tolist()
+    # recall = recall.cpu().data.numpy().tolist()
+    # f_beta = f_beta.cpu().data.numpy().tolist()
+    precision = precision.cpu().data.numpy()
+    recall = recall.cpu().data.numpy()
+    f_beta = f_beta.cpu().data.numpy()
+    accuracy = accuracy[threshold >= np.percentile(threshold, 40)]
+    precision = precision[threshold >= np.percentile(threshold, 40)]
+    recall = recall[threshold >= np.percentile(threshold, 40)]
+    f_beta = f_beta[threshold >= np.percentile(threshold, 40)]
+    # accuracy = accuracy[f_beta.index(maxf_beta)]
+    # precision = precision[f_beta.index(maxf_beta)]
+    # recall = recall[f_beta.index(maxf_beta)]
+    # f_beta = f_beta[f_beta.index(maxf_beta)]
     # precision = precision[f_beta.index(threshold):]
     # recall = recall[f_beta.index(threshold):]
     # f_beta = f_beta[f_beta.index(threshold):]
     # precision = np.asarray(precision).mean()
     # recall = np.asarray(recall).mean()
     # f_beta = np.asarray(f_beta).mean()
-    return accuracy.max().item(), f_beta, precision, recall, τ
+    return accuracy[0], f_beta[0], precision[0], recall[0], τ
 
 
 def generate_dataset():
@@ -517,7 +527,6 @@ for x in range(total_epochs-valid_epochs):
             0, len(channel_response_set_test))]
         checkpoint = []
         result = []
-        valid_result = []
         for correct_data_check in range(100):
             # signal to noise-ratio in dB at the receiver
             SNRdb = np.random.randint(5, 26)
@@ -539,24 +548,25 @@ for x in range(total_epochs-valid_epochs):
         avg_precision = (total_precision/valid_epochs)*100
         avg_recall = (total_recall/valid_epochs)*100
         avg_τ = (total_τ/valid_epochs)
-        avg_signal_pwoer = (total_signal_power/valid_epochs)
+        avg_signal_power = (total_signal_power/valid_epochs)
         index_SNR = SNRdb - 5
         SNR_checkpoint[index_SNR, 1] += accuracy  # total_accuracy_index_SNR
         SNR_checkpoint[index_SNR, 2] += fbeta  # total_fbeta_index_SNR
         SNR_checkpoint[index_SNR, 3] += 1  # total_avg_index_SNR
         checkpoint.extend(
             [valid_epochs, total_accuracy, total_fbeta, total_precision, total_recall, total_τ, total_signal_power])
-        result.extend(
-            ['accuracy', 'fbeta', 'precision', 'recall', 'τ', 'signal_power', total_accuracy, total_fbeta, total_precision, total_recall, total_τ, total_signal_power])
         np.savetxt('checkpoint.txt', checkpoint)
-        np.savetxt('SNR_checkpoint.txt', SNR_checkpoint)
+        np.savetxt('checkpoint_SNR.txt', SNR_checkpoint)
         if valid_epochs % 10 == 0:
             print('-' * 120)
             print('Ac:', accuracy, ' F-beta:',
                   fbeta, ' Pr:', precision, ' Rc:', recall)
             print('-' * 120)
             print('epoch ' + str(valid_epochs) + '\navg.accuracy = ' + str(avg_accuracy) + ' %\navg.f-beta = '
-                  + str(avg_fbeta) + ' %\navg.precision = ' + str(avg_precision) + ' %\navg.recall = ' + str(avg_recall) + ' %\navg.τ = ' + str(avg_τ) + ' \navg.signal power = ' + str(avg_signal_pwoer))
+                  + str(avg_fbeta) + ' %\navg.precision = ' + str(avg_precision) + ' %\navg.recall = ' + str(avg_recall) + ' %\navg.τ = ' + str(avg_τ) + ' \navg.signal power = ' + str(avg_signal_power))
+
+result.extend(
+    ['accuracy', 'fbeta', 'precision', 'recall', 'τ', 'signal_power', avg_accuracy, avg_fbeta, avg_precision, avg_recall, avg_τ, avg_signal_power])
 
 for SNR in range(21):
     SNR_checkpoint[SNR, 1] = SNR_checkpoint[SNR, 1] / SNR_checkpoint[SNR, 3]
@@ -566,4 +576,4 @@ if valid_epochs == total_epochs:
     np.savetxt('result.txt', np.reshape(result, (6, 2), order='F'), fmt="%s")
     np.savetxt('SNR_result.txt', SNR_checkpoint, fmt="%s")
     os.remove('checkpoint.txt')
-    os.remove('SNR_checkpoint.txt')
+    os.remove('checkpoint_SNR.txt')
