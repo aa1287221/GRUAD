@@ -1,45 +1,65 @@
 import numpy as np
 from matplotlib import pyplot as plt
-SNRresult128 = np.loadtxt('SNR_result128.txt')
-SNRresult1024 = np.loadtxt('SNR_result1024.txt')
-SNR128 = SNRresult128[:, 0]
-SNR1024 = SNRresult1024[:, 0]
-ACC128 = SNRresult128[:, 1]
-ACC1024 = SNRresult1024[:, 1]
-FBETA128 = SNRresult128[:, 2]
-FBETA1024 = SNRresult1024[:, 2]
+SNRresult38 = np.loadtxt('SNR_result1024tau38.txt')
+SNRresult39 = np.loadtxt('SNR_result1024tau39.txt')
+SNRresult40 = np.loadtxt('SNR_result1024tau40.txt')
+SNRresult41 = np.loadtxt('SNR_result1024tau41.txt')
+SNR38 = SNRresult38[:, 0]
+SNR39 = SNRresult39[:, 0]
+SNR40 = SNRresult40[:, 0]
+SNR41 = SNRresult41[:, 0]
+ACC38 = SNRresult38[:, 1]
+ACC39 = SNRresult39[:, 1]
+ACC40 = SNRresult40[:, 1]
+ACC41 = SNRresult41[:, 1]
+FBETA38 = SNRresult38[:, 2]
+FBETA39 = SNRresult39[:, 2]
+FBETA40 = SNRresult40[:, 2]
+FBETA41 = SNRresult41[:, 2]
 
-Ac128 = plt.plot(SNR128, ACC128, label='Block Length 128')
-Ac1024 = plt.plot(SNR1024, ACC1024, label='Block Length 1024')
-plt.ylim(0.97, 1)
+Ac38 = plt.plot(SNR38, ACC38, label='Threshold 38%')
+Ac39 = plt.plot(SNR39, ACC39, label='Threshold 39%')
+Ac40 = plt.plot(SNR40, ACC40, label='Threshold 40%')
+Ac41 = plt.plot(SNR41, ACC41, label='Threshold 41%')
+plt.ylim(0.98, 0.99)
 plt.xlim(0, 30)
 plt.xticks([0, 5, 10, 15, 20, 25, 30])
 plt.grid(True)
-plt.title('OFDM Simulate on 10000 Blocks Test',
+plt.title('OFDM Simulate on 10000 Blocks Validation',
           fontsize=18, fontweight='bold')
 plt.ylabel('Accuracy', fontsize=10, fontweight='bold')
 plt.xlabel('SNR(Eb/N0)', fontsize=10, fontweight='bold')
-plt.setp(Ac128, marker='o',
-         linestyle='--', markersize=5, linewidth=1)
-plt.setp(Ac1024, color='red', marker='*',
-         linestyle='--', markersize=5, linewidth=1)
+plt.setp(Ac38, marker='o',
+         linestyle='-', markersize=5, linewidth=1)
+plt.setp(Ac39, color='red', marker='*',
+         linestyle='-', markersize=5, linewidth=1)
+plt.setp(Ac40, color='purple', marker='P',
+         linestyle='-', markersize=5, linewidth=1)
+plt.setp(Ac41, color='brown', marker='p',
+         linestyle='-', markersize=5, linewidth=1)
 plt.legend()
 plt.savefig('OFDM Simulate on 10000 Blocks_Accuracy.jpg')
 plt.cla()
-Fb128 = plt.plot(SNR128, FBETA128, label='Block Length 128')
-Fb1024 = plt.plot(SNR1024, FBETA1024, label='Block Length 1024')
-plt.ylim(0.95, 0.99)
+Fb38 = plt.plot(SNR38, FBETA38, label='Threshold 38%')
+Fb39 = plt.plot(SNR39, FBETA39, label='Threshold 39%')
+Fb40 = plt.plot(SNR40, FBETA40, label='Threshold 40%')
+Fb41 = plt.plot(SNR41, FBETA41, label='Threshold 41%')
+plt.ylim(0.89, 0.95)
 plt.xlim(0, 30)
 plt.xticks([0, 5, 10, 15, 20, 25, 30])
 plt.grid(True)
-plt.title('OFDM Simulate on 10000 Blocks Test',
+plt.title('OFDM Simulate on 10000 Blocks Validation',
           fontsize=18, fontweight='bold')
 plt.ylabel('F-0.1 Score', fontsize=10, fontweight='bold')
 plt.xlabel('SNR(Eb/N0)', fontsize=10, fontweight='bold')
-plt.setp(Fb128, marker='o',
-         linestyle='--', markersize=5, linewidth=1)
-plt.setp(Fb1024, color='red', marker='*',
-         linestyle='--', markersize=5, linewidth=1)
+plt.setp(Fb38, marker='o',
+         linestyle='-', markersize=5, linewidth=1)
+plt.setp(Fb39, color='red', marker='*',
+         linestyle='-', markersize=5, linewidth=1)
+plt.setp(Fb40, color='purple', marker='P',
+         linestyle='-', markersize=5, linewidth=1)
+plt.setp(Fb41, color='brown', marker='p',
+         linestyle='-', markersize=5, linewidth=1)
 plt.legend()
 plt.savefig('OFDM Simulate on 10000 Blocks_F-0.1.jpg')
 plt.cla()

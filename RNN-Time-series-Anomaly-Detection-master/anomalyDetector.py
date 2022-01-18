@@ -162,9 +162,12 @@ def get_precision_recall(mean, cov, errors, args, score, label, num_samples, bet
     i = -1
     x = 1000 - np.size(f1)
     th = th[x:]
+    # threshold = torch.quantile(score, 0.999)
+    threshold = np.percentile(th, 41)
     # τ = th[f1 == maxf1]
     # τ = th[f1 == maxscore[0:1]]
-    τ = np.percentile(th, 80)
+    # τ = np.percentile(th, 80)
+    τ = threshold
     for error in errors:
         mult1 = error-mean.unsqueeze(0)  # [ 1 * prediction_window_size ]
         # [ prediction_window_size * prediction_window_size ]

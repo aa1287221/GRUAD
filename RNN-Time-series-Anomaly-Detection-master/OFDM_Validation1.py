@@ -20,7 +20,7 @@ mapping_table = {
 
 demapping_table = {v: k for k, v in mapping_table.items()}
 
-total_epochs = 10000
+total_epochs = 10
 
 if os.path.isfile('checkpoint.txt'):
     checkpoint = np.loadtxt('checkpoint.txt')
@@ -38,8 +38,8 @@ total_signal_power = float(checkpoint[6])
 if os.path.isfile('checkpoint_SNR.txt'):
     checkpoint_SNR = np.loadtxt('checkpoint_SNR.txt')
 else:
-    np.savetxt('checkpoint_SNR.txt', np.reshape([
-               5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], (21, 4), order='F'))
+    np.savetxt('checkpoint_SNR.txt', np.reshape(
+        [0, 0, 0], (1, 3), order='F'))
     checkpoint_SNR = np.loadtxt('checkpoint_SNR.txt')
 
 
@@ -440,10 +440,11 @@ for x in range(total_epochs-valid_epochs):
         channel_response = channel_response_set_test[np.random.randint(
             0, len(channel_response_set_test))]
         checkpoint = []
+        precheckpoint_SNR = []
         result = []
         for correct_data_check in range(100):
             # signal to noise-ratio in dB at the receiver
-            SNRdb = np.random.randint(5, 26)
+            SNRdb = np.random.uniform(5, 26)
             datacheck, signal_power = ofdm_simulate_BG(
                 bits, channel_response, SNRdb)
             if len(datacheck) > 1:
@@ -463,10 +464,9 @@ for x in range(total_epochs-valid_epochs):
         avg_recall = (total_recall/valid_epochs)*100
         avg_τ = (total_τ/valid_epochs)
         avg_signal_power = (total_signal_power/valid_epochs)
-        index_SNR = SNRdb - 5
-        checkpoint_SNR[index_SNR, 1] += accuracy  # total_accuracy_index_SNR
-        checkpoint_SNR[index_SNR, 2] += fbeta  # total_fbeta_index_SNR
-        checkpoint_SNR[index_SNR, 3] += 1  # total_avg_index_SNR
+        precheckpoint_SNR.extend([SNRdb, accuracy, fbeta])
+        checkpoint_SNR = np.concatenate(
+            (checkpoint_SNR, precheckpoint_SNR), axis=0)
         checkpoint.extend(
             [valid_epochs, total_accuracy, total_fbeta, total_precision, total_recall, total_τ, total_signal_power])
         np.savetxt('checkpoint.txt', checkpoint)
@@ -482,12 +482,10 @@ for x in range(total_epochs-valid_epochs):
 result.extend(
     ['accuracy', 'fbeta', 'precision', 'recall', 'τ', 'signal_power', avg_accuracy, avg_fbeta, avg_precision, avg_recall, avg_τ, avg_signal_power])
 
-for SNR in range(21):
-    checkpoint_SNR[SNR, 1] = checkpoint_SNR[SNR, 1] / checkpoint_SNR[SNR, 3]
-    checkpoint_SNR[SNR, 2] = checkpoint_SNR[SNR, 2] / checkpoint_SNR[SNR, 3]
-
 if valid_epochs == total_epochs:
-    np.savetxt('result1024tau41.txt', np.reshape(result, (6, 2), order='F'), fmt="%s")
-    np.savetxt('SNR_result1024tau41.txt', checkpoint_SNR, fmt="%s")
+    np.savetxt('result39.txt', np.reshape(result, (6, 2), order='F'), fmt="%s")
+    checkpoint_SNR = np.reshape(checkpoint_SNR, (total_epochs+1, 3))
+    checkpoint_SNR = np.delete(checkpoint_SNR, 0, 0)
+    np.savetxt('SNR_result39.txt', checkpoint_SNR, fmt="%s")
     os.remove('checkpoint.txt')
     os.remove('checkpoint_SNR.txt')
